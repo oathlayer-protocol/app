@@ -513,12 +513,12 @@ const geminiResult = httpClient.sendRequest(
 
 **File: `dashboard/src/lib/contract.ts`**
 
-- [ ] Update ABI with new events and functions (ComplianceStatus enum, BreachWarning, breachCount, etc.)
-- [ ] Remove `MOCK_SLAS` and `MOCK_BREACHES`
+- [x] Update ABI with new events and functions (ComplianceStatus enum, BreachWarning, breachCount, etc.)
+- [x] Remove `MOCK_SLAS` and `MOCK_BREACHES`
 
 **File: `dashboard/src/app/page.tsx`**
 
-- [ ] Wire stat cards to live contract reads via `useReadContracts` multicall:
+- [x] Wire stat cards to live contract reads via `useReadContracts` multicall:
 
 ```tsx
 // Batch all SLA reads into single multicall — avoids hooks-in-loop violation
@@ -546,7 +546,7 @@ const { data: breachCount } = useReadContract({
 });
 ```
 
-- [ ] Fetch historical events via `getLogs` (viem), NOT `useContractEvents`:
+- [x] Fetch historical events via `getLogs` (viem), NOT `useContractEvents`:
 
 ```tsx
 import { usePublicClient } from 'wagmi';
@@ -580,14 +580,14 @@ useWatchContractEvent({
 });
 ```
 
-- [ ] Add **Breach Risk** column in SLA table: risk score badge (green <50 / amber 50-70 / red >70)
+- [x] Add **Breach Risk** column in SLA table: risk score badge (green <50 / amber 50-70 / red >70)
 - [ ] Add **Compliance Status** badge on provider cards: `useReadContract` for `providerCompliance[address]`
 
 **File: `dashboard/src/app/provider/register/page.tsx`**
 
-- [ ] After World Chain registration tx confirms, show spinner: "Compliance check in progress..."
-- [ ] Poll `providerCompliance[address]` every 5 seconds until it changes from `NONE`
-- [ ] Show APPROVED (green) or REJECTED (red) badge when status arrives
+- [x] After World Chain registration tx confirms, show spinner: "Compliance check in progress..."
+- [x] Poll `providerCompliance[address]` every 5 seconds until it changes from `NONE`
+- [x] Show APPROVED (green) or REJECTED (red) badge when status arrives
 
 ### Research Insights — Dashboard
 

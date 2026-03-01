@@ -4,7 +4,10 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { SLA_CONTRACT_ADDRESS, SLA_ABI, MOCK_BREACHES } from "@/lib/contract";
+import { SLA_CONTRACT_ADDRESS, SLA_ABI } from "@/lib/contract";
+
+// TODO: Wire to live breach events via getLogs (secondary page — not in core demo flow)
+const MOCK_BREACHES: { slaId: number; provider: string; uptimeBps: number; penaltyAmount: string; timestamp: string; txHash: string }[] = [];
 
 export default function Claims() {
   const { address, isConnected } = useAccount();
