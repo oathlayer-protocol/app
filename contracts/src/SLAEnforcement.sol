@@ -101,8 +101,13 @@ contract SLAEnforcement {
         arbitratorExternalNullifier = abi.encodePacked(
             abi.encodePacked(_appId).hashToField(), "oathlayer-arbitrator-register"
         ).hashToField();
-        // For hackathon: deployer address is acceptable as initial CRE forwarder
+        require(_creForwarder != address(0), "Zero forwarder address");
         creForwarder = _creForwarder;
+    }
+
+    modifier onlyCREForwarder() {
+        require(msg.sender == creForwarder, "Only CRE forwarder");
+        _;
     }
 
     /// @notice Register as SLA provider — requires valid World ID ZK proof
@@ -232,13 +237,12 @@ contract SLAEnforcement {
     /// @notice CRE workflow calls this to slash bond on breach
     function recordBreach(
         uint256 slaId,
-        uint256 uptimeBps,
-        uint256 penaltyBps
-    ) external {
+        uint256 uptimeBps
+    ) external onlyCREForwarder {
         SLA storage sla = slas[slaId];
         require(sla.active, "SLA not active");
 
-        uint256 penaltyAmount = (sla.bondAmount * penaltyBps) / 10000;
+        uint256 penaltyAmount = (sla.bondAmount * sla.penaltyBps) / 10000;
         require(penaltyAmount <= sla.bondAmount, "Penalty exceeds bond");
 
         sla.bondAmount -= penaltyAmount;

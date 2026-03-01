@@ -73,7 +73,6 @@ const SLA_ABI = [
     inputs: [
       { internalType: "uint256", name: "slaId", type: "uint256" },
       { internalType: "uint256", name: "uptimeBps", type: "uint256" },
-      { internalType: "uint256", name: "penaltyBps", type: "uint256" },
     ],
     name: "recordBreach",
     outputs: [],
@@ -168,13 +167,12 @@ function writeBreach(
   evmClient: InstanceType<typeof cre.capabilities.EVMClient>,
   contractAddress: Address,
   slaId: number,
-  uptimeBps: number,
-  penaltyBps: bigint
+  uptimeBps: number
 ): void {
   const callData = encodeFunctionData({
     abi: SLA_ABI,
     functionName: "recordBreach",
-    args: [BigInt(slaId), BigInt(uptimeBps), penaltyBps],
+    args: [BigInt(slaId), BigInt(uptimeBps)],
   });
 
   const report = runtime.report(prepareReportRequest(callData)).result();
@@ -238,7 +236,7 @@ function scanSLAs(runtime: Runtime<Config>): { breachCount: number } {
 
     if (uptimeBps < minUptimeBps) {
       runtime.log(`[OathLayer] BREACH SLA ${i}: ${uptimeBps} < ${minUptimeBps} — slashing bond`);
-      writeBreach(runtime, evmClient, contractAddress, i, uptimeBps, sla.penaltyBps);
+      writeBreach(runtime, evmClient, contractAddress, i, uptimeBps);
       breachCount++;
     }
   }

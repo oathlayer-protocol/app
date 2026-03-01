@@ -169,7 +169,8 @@ contract SLAEnforcementTest is Test {
         uint256 slaId = slaContract.createSLA{value: 1 ether}(tenant, 48, 9950, 500);
 
         uint256 tenantBalBefore = tenant.balance;
-        slaContract.recordBreach(slaId, 9800, 500); // 5% penalty
+        vm.prank(creForwarder);
+        slaContract.recordBreach(slaId, 9800); // penaltyBps read from SLA storage (500 = 5%)
 
         (,, uint256 bondAfter,,,,, bool active) = slaContract.slas(slaId);
         assertEq(bondAfter, 0.95 ether);
@@ -183,11 +184,24 @@ contract SLAEnforcementTest is Test {
         vm.prank(provider);
         uint256 slaId = slaContract.createSLA{value: 1 ether}(tenant, 48, 9950, 10000);
 
-        slaContract.recordBreach(slaId, 9800, 10000);
+        vm.prank(creForwarder);
+        slaContract.recordBreach(slaId, 9800);
 
         (,, uint256 bondAfter,,,,, bool active) = slaContract.slas(slaId);
         assertEq(bondAfter, 0);
         assertFalse(active);
+    }
+
+    function test_RevertWhen_NonCRECallsRecordBreach() public {
+        _registerProvider();
+
+        vm.prank(provider);
+        uint256 slaId = slaContract.createSLA{value: 1 ether}(tenant, 48, 9950, 500);
+
+        address attacker = address(0xBAD);
+        vm.expectRevert("Only CRE forwarder");
+        vm.prank(attacker);
+        slaContract.recordBreach(slaId, 9800);
     }
 
     // --- Arbitration ---
