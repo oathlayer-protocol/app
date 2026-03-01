@@ -36,9 +36,9 @@ import { z } from "zod";
 const configSchema = z.object({
   slaContractAddress: z.string().describe("Deployed SLAEnforcement contract address on Sepolia"),
   uptimeApiUrl: z.string().describe("Base URL for uptime API"),
+  complianceApiUrl: z.string().describe("Base URL for compliance API (mock at :3001)"),
   chainSelectorName: z.string(),
   worldChainContractAddress: z.string().describe("WorldChainRegistry address on World Chain"),
-  // World Chain mainnet CCIP chain selector (from Chainlink docs: 11820315825706515952)
   worldChainSelector: z.string().describe("CCIP chain selector for World Chain mainnet (default: 11820315825706515952)"),
 });
 
@@ -81,7 +81,7 @@ const SLA_ABI = [
   },
 ] as const;
 
-// --- Relay ABI — new forwarder functions on SLAEnforcement (Sepolia) ---
+// --- Relay ABI — forwarder functions on SLAEnforcement (Sepolia) ---
 const RELAY_ABI = [
   {
     inputs: [
@@ -99,6 +99,27 @@ const RELAY_ABI = [
       { internalType: "uint256", name: "nullifierHash", type: "uint256" },
     ],
     name: "registerArbitratorRelayed",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "provider", type: "address" },
+      { internalType: "uint8", name: "status", type: "uint8" },
+    ],
+    name: "setComplianceStatus",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "slaId", type: "uint256" },
+      { internalType: "uint256", name: "riskScore", type: "uint256" },
+      { internalType: "string", name: "prediction", type: "string" },
+    ],
+    name: "recordBreachWarning",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -303,12 +324,10 @@ const onClaimFiled = (runtime: Runtime<Config>) => {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const onProviderRegistrationRequested = (runtime: Runtime<Config>, log: any) => {
-  runtime.log("[OathLayer] ProviderRegistrationRequested on World Chain — relaying to Sepolia");
+  runtime.log("[OathLayer] ProviderRegistrationRequested on World Chain — compliance check + relay");
 
-  // topics[0] = event signature hash (already filtered by trigger)
-  // topics[1] = user (indexed address, left-padded to 32 bytes)
-  // topics[2] = nullifierHash (indexed uint256)
-  // data      = abi-encoded (root uint256, timestamp uint256)
+  const config = runtime.config;
+  const contractAddress = getAddress(config.slaContractAddress) as Address;
   const userAddress = `0x${(log.topics[1] as string).slice(26)}` as Address;
   const nullifierHash = BigInt(log.topics[2] as string);
 
@@ -319,16 +338,78 @@ const onProviderRegistrationRequested = (runtime: Runtime<Config>, log: any) => 
     ],
     log.data as `0x${string}`
   );
-  const root = decoded[0];
 
-  runtime.log(
-    `[OathLayer] Relaying provider registration: user=${userAddress} nullifier=${nullifierHash} root=${root}`
-  );
+  runtime.log(`[OathLayer] Provider ${userAddress.slice(0, 10)}... — running confidential compliance check`);
 
-  relayRegistration(runtime, "registerProviderRelayed", userAddress, nullifierHash);
+  // Confidential HTTP compliance check — encrypted via TEE enclaves
+  const confidentialClient = new cre.capabilities.ConfidentialHTTPClient();
+  const complianceApiKey = runtime.getSecret({ id: "COMPLIANCE_API_KEY" }).result().value;
+  if (!complianceApiKey) throw new Error("COMPLIANCE_API_KEY secret not configured");
 
-  runtime.log(`[OathLayer] Provider registration relayed to Sepolia for ${userAddress}`);
-  return { relayed: true, role: "provider", user: userAddress };
+  const complianceResult = runtime.runInNodeMode(
+    (nodeRuntime) => {
+      const response = confidentialClient.sendRequest(nodeRuntime, {
+        url: `${config.complianceApiUrl}/compliance/${userAddress}`,
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${complianceApiKey}`,
+          "Content-Type": "application/json",
+        },
+      }).result();
+
+      if (!ok(response)) {
+        throw new Error(`Compliance API HTTP ${response.statusCode}`);
+      }
+
+      return json(response);
+    },
+    // Mock API is deterministic — identical consensus is correct here
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    consensusIdenticalAggregation() as any
+  )().result() as { compliant: boolean; reason: string };
+
+  // Get Sepolia EVM client for writing compliance status + relay
+  const sepoliaNetwork = getNetwork({
+    chainFamily: "evm",
+    chainSelectorName: "ethereum-testnet-sepolia",
+    isTestnet: true,
+  });
+  if (!sepoliaNetwork) throw new Error("Sepolia network not found in CRE registry");
+  const sepoliaClient = new cre.capabilities.EVMClient(sepoliaNetwork.chainSelector.selector);
+
+  if (complianceResult.compliant) {
+    // Set APPROVED + relay registration in same handler
+    const setComplianceData = encodeFunctionData({
+      abi: RELAY_ABI,
+      functionName: "setComplianceStatus",
+      args: [userAddress, 1], // 1 = APPROVED
+    });
+    const complianceReport = runtime.report(prepareReportRequest(setComplianceData)).result();
+    sepoliaClient.writeReport(runtime, {
+      receiver: toHex(toBytes(contractAddress, { size: 20 })),
+      report: complianceReport,
+    }).result();
+
+    // Relay the registration
+    relayRegistration(runtime, "registerProviderRelayed", userAddress, nullifierHash);
+    runtime.log(`[OathLayer] Provider ${userAddress.slice(0, 10)}... APPROVED and relayed to Sepolia`);
+    return { relayed: true, compliant: true, role: "provider", user: userAddress };
+  } else {
+    // Set REJECTED, do NOT relay
+    const setComplianceData = encodeFunctionData({
+      abi: RELAY_ABI,
+      functionName: "setComplianceStatus",
+      args: [userAddress, 2], // 2 = REJECTED
+    });
+    const complianceReport = runtime.report(prepareReportRequest(setComplianceData)).result();
+    sepoliaClient.writeReport(runtime, {
+      receiver: toHex(toBytes(contractAddress, { size: 20 })),
+      report: complianceReport,
+    }).result();
+
+    runtime.log(`[OathLayer] Provider ${userAddress.slice(0, 10)}... REJECTED: ${complianceResult.reason}`);
+    return { relayed: false, compliant: false, role: "provider", user: userAddress };
+  }
 };
 
 /**

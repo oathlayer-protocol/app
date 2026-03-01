@@ -325,16 +325,16 @@ const confidentialClient = new cre.capabilities.ConfidentialHTTPClient();
 ```
 
 Implementation (inline in `onProviderRegistrationRequested` — no wrapper function):
-- [ ] Modify `onProviderRegistrationRequested` handler:
+- [x] Modify `onProviderRegistrationRequested` handler:
   1. Decode provider address from event
   2. Fetch compliance API key: `runtime.getSecret({ id: "COMPLIANCE_API_KEY" }).result()`
   3. Call compliance API via `ConfidentialHTTPClient` — request and response encrypted in transit, DON nodes cannot see plaintext
   4. Wrap in `runInNodeMode` with `consensusIdenticalAggregation` (mock API returns deterministic results)
   5. If `compliant === true` → call `setComplianceStatus(provider, APPROVED)` + `registerProviderRelayed` on Sepolia
   6. If `compliant === false` → call `setComplianceStatus(provider, REJECTED)` on Sepolia, do NOT relay registration
-- [ ] Add `COMPLIANCE_API_URL` to workflow config schema
+- [x] Add `COMPLIANCE_API_URL` to workflow config schema
 - [ ] Add `COMPLIANCE_API_KEY` as CRE secret via `cre secrets create`
-- [ ] Fail loudly if secret is missing: `if (!apiKey) throw new Error("COMPLIANCE_API_KEY not configured")`
+- [x] Fail loudly if secret is missing: `if (!apiKey) throw new Error("COMPLIANCE_API_KEY not configured")`
 
 ```typescript
 // workflow/workflow.ts — inside onProviderRegistrationRequested handler
