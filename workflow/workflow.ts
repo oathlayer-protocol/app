@@ -36,9 +36,9 @@ import { z } from "zod";
 const configSchema = z.object({
   slaContractAddress: z.string().describe("Deployed SLAEnforcement contract address on Sepolia"),
   uptimeApiUrl: z.string().describe("Base URL for uptime API"),
+  complianceApiUrl: z.string().describe("Base URL for compliance API (mock at :3001)"),
   chainSelectorName: z.string(),
   worldChainContractAddress: z.string().describe("WorldChainRegistry address on World Chain"),
-  // World Chain mainnet CCIP chain selector (from Chainlink docs: 11820315825706515952)
   worldChainSelector: z.string().describe("CCIP chain selector for World Chain mainnet (default: 11820315825706515952)"),
 });
 
@@ -73,7 +73,6 @@ const SLA_ABI = [
     inputs: [
       { internalType: "uint256", name: "slaId", type: "uint256" },
       { internalType: "uint256", name: "uptimeBps", type: "uint256" },
-      { internalType: "uint256", name: "penaltyBps", type: "uint256" },
     ],
     name: "recordBreach",
     outputs: [],
@@ -82,7 +81,7 @@ const SLA_ABI = [
   },
 ] as const;
 
-// --- Relay ABI — new forwarder functions on SLAEnforcement (Sepolia) ---
+// --- Relay ABI — forwarder functions on SLAEnforcement (Sepolia) ---
 const RELAY_ABI = [
   {
     inputs: [
@@ -100,6 +99,27 @@ const RELAY_ABI = [
       { internalType: "uint256", name: "nullifierHash", type: "uint256" },
     ],
     name: "registerArbitratorRelayed",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "provider", type: "address" },
+      { internalType: "uint8", name: "status", type: "uint8" },
+    ],
+    name: "setComplianceStatus",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "slaId", type: "uint256" },
+      { internalType: "uint256", name: "riskScore", type: "uint256" },
+      { internalType: "string", name: "prediction", type: "string" },
+    ],
+    name: "recordBreachWarning",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -168,13 +188,12 @@ function writeBreach(
   evmClient: InstanceType<typeof cre.capabilities.EVMClient>,
   contractAddress: Address,
   slaId: number,
-  uptimeBps: number,
-  penaltyBps: bigint
+  uptimeBps: number
 ): void {
   const callData = encodeFunctionData({
     abi: SLA_ABI,
     functionName: "recordBreach",
-    args: [BigInt(slaId), BigInt(uptimeBps), penaltyBps],
+    args: [BigInt(slaId), BigInt(uptimeBps)],
   });
 
   const report = runtime.report(prepareReportRequest(callData)).result();
@@ -185,7 +204,7 @@ function writeBreach(
 }
 
 // --- Core SLA scan logic (shared by cron and log handlers) ---
-function scanSLAs(runtime: Runtime<Config>): { breachCount: number } {
+function scanSLAs(runtime: Runtime<Config>): { breachCount: number; warningCount: number } {
   const config = runtime.config;
   const contractAddress = getAddress(config.slaContractAddress) as Address;
 
@@ -206,6 +225,9 @@ function scanSLAs(runtime: Runtime<Config>): { breachCount: number } {
 
   let breachCount = 0;
 
+  // Collect active SLA metrics for batched Gemini prediction
+  const activeSLAMetrics: { slaId: number; provider: Address; uptimeBps: number; minUptimeBps: number }[] = [];
+
   for (let i = 0; i < Number(slaCount); i++) {
     const sla = readSla(runtime, evmClient, contractAddress, i);
     if (!sla.active) continue;
@@ -225,7 +247,6 @@ function scanSLAs(runtime: Runtime<Config>): { breachCount: number } {
 
         return json(response);
       },
-      // Consensus: identical value required across all DON nodes
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       consensusIdenticalAggregation() as any
     )().result();
@@ -238,13 +259,115 @@ function scanSLAs(runtime: Runtime<Config>): { breachCount: number } {
 
     if (uptimeBps < minUptimeBps) {
       runtime.log(`[OathLayer] BREACH SLA ${i}: ${uptimeBps} < ${minUptimeBps} — slashing bond`);
-      writeBreach(runtime, evmClient, contractAddress, i, uptimeBps, sla.penaltyBps);
+      writeBreach(runtime, evmClient, contractAddress, i, uptimeBps);
       breachCount++;
+    }
+
+    activeSLAMetrics.push({ slaId: i, provider: sla.provider, uptimeBps, minUptimeBps });
+  }
+
+  // --- AI Breach Prediction via Gemini Flash ---
+  let warningCount = 0;
+
+  if (activeSLAMetrics.length > 0) {
+    try {
+      const geminiKey = runtime.getSecret({ id: "GEMINI_API_KEY" }).result().value;
+      if (!geminiKey) throw new Error("GEMINI_API_KEY secret not configured");
+
+      const confidentialClient = new cre.capabilities.ConfidentialHTTPClient();
+
+      const prompt = `You are an SLA compliance analyzer. Given the following uptime metrics for infrastructure providers, predict the probability of an SLA breach in the next 24 hours for each SLA.
+
+Metrics: ${JSON.stringify(activeSLAMetrics)}
+
+Respond with a JSON array: [{"slaId": <number>, "riskScore": <0-100>, "prediction": "<one sentence max 100 chars>"}]`;
+
+      const geminiResponse = runtime.runInNodeMode(
+        (nodeRuntime) => {
+          const response = confidentialClient.sendRequest(nodeRuntime, {
+            url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": geminiKey,
+            },
+            body: Buffer.from(JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: prompt }] }],
+              generationConfig: {
+                temperature: 0,
+                maxOutputTokens: 512,
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      slaId: { type: "INTEGER" },
+                      riskScore: { type: "INTEGER" },
+                      prediction: { type: "STRING" },
+                    },
+                    required: ["slaId", "riskScore", "prediction"],
+                  },
+                },
+              },
+            })),
+          }).result();
+
+          if (!ok(response)) {
+            throw new Error(`Gemini API HTTP ${response.statusCode}`);
+          }
+
+          return json(response);
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        consensusIdenticalAggregation() as any
+      )().result();
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const apiResponse = geminiResponse as any;
+      const predictions = JSON.parse(apiResponse.candidates[0].content.parts[0].text) as {
+        slaId: number;
+        riskScore: number;
+        prediction: string;
+      }[];
+
+      // Get Sepolia client for writing breach warnings
+      const sepoliaNetwork = getNetwork({
+        chainFamily: "evm",
+        chainSelectorName: "ethereum-testnet-sepolia",
+        isTestnet: true,
+      });
+      if (!sepoliaNetwork) throw new Error("Sepolia network not found");
+      const sepoliaClient = new cre.capabilities.EVMClient(sepoliaNetwork.chainSelector.selector);
+
+      for (const pred of predictions) {
+        if (pred.riskScore > 70) {
+          const truncated = pred.prediction.slice(0, 100);
+          runtime.log(`[OathLayer] WARNING SLA ${pred.slaId}: risk=${pred.riskScore} — ${truncated}`);
+
+          const callData = encodeFunctionData({
+            abi: RELAY_ABI,
+            functionName: "recordBreachWarning",
+            args: [BigInt(pred.slaId), BigInt(pred.riskScore), truncated],
+          });
+          const report = runtime.report(prepareReportRequest(callData)).result();
+          sepoliaClient.writeReport(runtime, {
+            receiver: toHex(toBytes(contractAddress, { size: 20 })),
+            report,
+          }).result();
+          warningCount++;
+        }
+      }
+
+      runtime.log(`[OathLayer] Gemini predictions: ${predictions.length} SLAs analyzed, ${warningCount} warnings`);
+    } catch (e) {
+      // Fail silently — better to miss a warning than emit a false one
+      runtime.log(`[OathLayer] Gemini prediction failed: ${(e as Error).message}`);
     }
   }
 
-  runtime.log(`[OathLayer] Done. Breaches: ${breachCount}`);
-  return { breachCount };
+  runtime.log(`[OathLayer] Done. Breaches: ${breachCount}, Warnings: ${warningCount}`);
+  return { breachCount, warningCount };
 }
 
 // --- Cross-chain relay helpers ---
@@ -305,12 +428,10 @@ const onClaimFiled = (runtime: Runtime<Config>) => {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const onProviderRegistrationRequested = (runtime: Runtime<Config>, log: any) => {
-  runtime.log("[OathLayer] ProviderRegistrationRequested on World Chain — relaying to Sepolia");
+  runtime.log("[OathLayer] ProviderRegistrationRequested on World Chain — compliance check + relay");
 
-  // topics[0] = event signature hash (already filtered by trigger)
-  // topics[1] = user (indexed address, left-padded to 32 bytes)
-  // topics[2] = nullifierHash (indexed uint256)
-  // data      = abi-encoded (root uint256, timestamp uint256)
+  const config = runtime.config;
+  const contractAddress = getAddress(config.slaContractAddress) as Address;
   const userAddress = `0x${(log.topics[1] as string).slice(26)}` as Address;
   const nullifierHash = BigInt(log.topics[2] as string);
 
@@ -321,16 +442,78 @@ const onProviderRegistrationRequested = (runtime: Runtime<Config>, log: any) => 
     ],
     log.data as `0x${string}`
   );
-  const root = decoded[0];
 
-  runtime.log(
-    `[OathLayer] Relaying provider registration: user=${userAddress} nullifier=${nullifierHash} root=${root}`
-  );
+  runtime.log(`[OathLayer] Provider ${userAddress.slice(0, 10)}... — running confidential compliance check`);
 
-  relayRegistration(runtime, "registerProviderRelayed", userAddress, nullifierHash);
+  // Confidential HTTP compliance check — encrypted via TEE enclaves
+  const confidentialClient = new cre.capabilities.ConfidentialHTTPClient();
+  const complianceApiKey = runtime.getSecret({ id: "COMPLIANCE_API_KEY" }).result().value;
+  if (!complianceApiKey) throw new Error("COMPLIANCE_API_KEY secret not configured");
 
-  runtime.log(`[OathLayer] Provider registration relayed to Sepolia for ${userAddress}`);
-  return { relayed: true, role: "provider", user: userAddress };
+  const complianceResult = runtime.runInNodeMode(
+    (nodeRuntime) => {
+      const response = confidentialClient.sendRequest(nodeRuntime, {
+        url: `${config.complianceApiUrl}/compliance/${userAddress}`,
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${complianceApiKey}`,
+          "Content-Type": "application/json",
+        },
+      }).result();
+
+      if (!ok(response)) {
+        throw new Error(`Compliance API HTTP ${response.statusCode}`);
+      }
+
+      return json(response);
+    },
+    // Mock API is deterministic — identical consensus is correct here
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    consensusIdenticalAggregation() as any
+  )().result() as { compliant: boolean; reason: string };
+
+  // Get Sepolia EVM client for writing compliance status + relay
+  const sepoliaNetwork = getNetwork({
+    chainFamily: "evm",
+    chainSelectorName: "ethereum-testnet-sepolia",
+    isTestnet: true,
+  });
+  if (!sepoliaNetwork) throw new Error("Sepolia network not found in CRE registry");
+  const sepoliaClient = new cre.capabilities.EVMClient(sepoliaNetwork.chainSelector.selector);
+
+  if (complianceResult.compliant) {
+    // Set APPROVED + relay registration in same handler
+    const setComplianceData = encodeFunctionData({
+      abi: RELAY_ABI,
+      functionName: "setComplianceStatus",
+      args: [userAddress, 1], // 1 = APPROVED
+    });
+    const complianceReport = runtime.report(prepareReportRequest(setComplianceData)).result();
+    sepoliaClient.writeReport(runtime, {
+      receiver: toHex(toBytes(contractAddress, { size: 20 })),
+      report: complianceReport,
+    }).result();
+
+    // Relay the registration
+    relayRegistration(runtime, "registerProviderRelayed", userAddress, nullifierHash);
+    runtime.log(`[OathLayer] Provider ${userAddress.slice(0, 10)}... APPROVED and relayed to Sepolia`);
+    return { relayed: true, compliant: true, role: "provider", user: userAddress };
+  } else {
+    // Set REJECTED, do NOT relay
+    const setComplianceData = encodeFunctionData({
+      abi: RELAY_ABI,
+      functionName: "setComplianceStatus",
+      args: [userAddress, 2], // 2 = REJECTED
+    });
+    const complianceReport = runtime.report(prepareReportRequest(setComplianceData)).result();
+    sepoliaClient.writeReport(runtime, {
+      receiver: toHex(toBytes(contractAddress, { size: 20 })),
+      report: complianceReport,
+    }).result();
+
+    runtime.log(`[OathLayer] Provider ${userAddress.slice(0, 10)}... REJECTED: ${complianceResult.reason}`);
+    return { relayed: false, compliant: false, role: "provider", user: userAddress };
+  }
 };
 
 /**

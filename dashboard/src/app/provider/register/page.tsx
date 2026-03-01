@@ -3,11 +3,73 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { IDKitWidget, VerificationLevel, type ISuccessResult } from "@worldcoin/idkit";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
 import { parseEther } from "viem";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { SLA_CONTRACT_ADDRESS, SLA_ABI } from "@/lib/contract";
 import { decodeProof } from "@/lib/proof";
+
+function ComplianceStatusBadge({ address, txHash }: { address: string; txHash: string }) {
+  // Poll providerCompliance every 5s until it changes from NONE (0)
+  const { data: complianceStatus } = useReadContract({
+    address: SLA_CONTRACT_ADDRESS,
+    abi: SLA_ABI,
+    functionName: "providerCompliance",
+    args: [address as `0x${string}`],
+    query: { refetchInterval: 5_000 },
+  });
+
+  const status = Number(complianceStatus ?? 0);
+  // 0 = NONE, 1 = APPROVED, 2 = REJECTED
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mt-4 p-4 rounded-lg border"
+      style={{
+        borderColor: status === 1 ? '#22c55e40' : status === 2 ? '#ef444440' : 'var(--card-border)',
+        background: status === 1 ? '#22c55e08' : status === 2 ? '#ef444408' : 'var(--card)',
+      }}
+    >
+      <p className="text-xs mt-1 font-mono text-gray-400 mb-2">
+        Tx:{" "}
+        <a
+          href={`${process.env.NEXT_PUBLIC_TENDERLY_EXPLORER}/tx/${txHash}`}
+          target="_blank"
+          rel="noreferrer"
+          className="underline"
+        >
+          {txHash.slice(0, 20)}...
+        </a>
+      </p>
+      {status === 0 && (
+        <div className="flex items-center gap-2 text-yellow-400">
+          <span className="animate-spin inline-block w-4 h-4 border-2 border-yellow-400 border-t-transparent rounded-full" />
+          <span className="text-sm">Compliance check in progress...</span>
+        </div>
+      )}
+      {status === 1 && (
+        <div className="flex items-center gap-2 text-green-400">
+          <span className="text-lg">&#10003;</span>
+          <div>
+            <p className="font-medium">Provider registered &amp; compliance APPROVED</p>
+            <p className="text-xs text-gray-400">You can now create SLAs</p>
+          </div>
+        </div>
+      )}
+      {status === 2 && (
+        <div className="flex items-center gap-2 text-red-400">
+          <span className="text-lg">&#10007;</span>
+          <div>
+            <p className="font-medium">Compliance REJECTED</p>
+            <p className="text-xs text-gray-400">This address has been permanently blocked from creating SLAs</p>
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
 
 export default function RegisterProvider() {
   const { address, isConnected } = useAccount();
@@ -147,26 +209,7 @@ export default function RegisterProvider() {
           </p>
         )}
 
-        {isSuccess && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 p-4 rounded-lg text-green-400 border border-green-400/20 bg-green-400/5"
-          >
-            <p className="font-medium">Provider registered on-chain!</p>
-            <p className="text-xs mt-1 font-mono text-gray-400">
-              Tx:{" "}
-              <a
-                href={`${process.env.NEXT_PUBLIC_TENDERLY_EXPLORER}/tx/${txHash}`}
-                target="_blank"
-                rel="noreferrer"
-                className="underline"
-              >
-                {txHash?.slice(0, 20)}...
-              </a>
-            </p>
-          </motion.div>
-        )}
+        {isSuccess && <ComplianceStatusBadge address={address!} txHash={txHash!} />}
 
         {error && (
           <p className="mt-3 text-red-400 text-sm">

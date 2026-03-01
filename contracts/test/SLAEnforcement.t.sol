@@ -63,6 +63,16 @@ contract SLAEnforcementTest is Test {
         slaContract.registerProvider{value: 0.1 ether}(ROOT, NULLIFIER_PROVIDER, proof);
     }
 
+    function _approveProvider() internal {
+        vm.prank(creForwarder);
+        slaContract.setComplianceStatus(provider, SLAEnforcement.ComplianceStatus.APPROVED);
+    }
+
+    function _registerAndApproveProvider() internal {
+        _registerProvider();
+        _approveProvider();
+    }
+
     function _registerArbitrator() internal {
         vm.prank(arbitrator);
         slaContract.registerArbitrator(ROOT, NULLIFIER_ARBITRATOR, proof);
@@ -110,7 +120,7 @@ contract SLAEnforcementTest is Test {
     // --- SLA Creation ---
 
     function test_createSLA() public {
-        _registerProvider();
+        _registerAndApproveProvider();
 
         vm.prank(provider);
         uint256 slaId = slaContract.createSLA{value: 1 ether}(tenant, 48, 9950, 500);
@@ -126,15 +136,23 @@ contract SLAEnforcementTest is Test {
     }
 
     function test_createSLANotVerified() public {
+        _approveProvider(); // compliant but not verified
         vm.prank(provider);
         vm.expectRevert("Not verified provider");
+        slaContract.createSLA{value: 1 ether}(tenant, 48, 9950, 500);
+    }
+
+    function test_createSLANotCompliant() public {
+        _registerProvider(); // verified but not compliant
+        vm.prank(provider);
+        vm.expectRevert("Not compliant");
         slaContract.createSLA{value: 1 ether}(tenant, 48, 9950, 500);
     }
 
     // --- Claims ---
 
     function test_fileClaim() public {
-        _registerProvider();
+        _registerAndApproveProvider();
 
         vm.prank(provider);
         uint256 slaId = slaContract.createSLA{value: 1 ether}(tenant, 48, 9950, 500);
@@ -150,7 +168,7 @@ contract SLAEnforcementTest is Test {
     }
 
     function test_fileClaimNotTenant() public {
-        _registerProvider();
+        _registerAndApproveProvider();
 
         vm.prank(provider);
         uint256 slaId = slaContract.createSLA{value: 1 ether}(tenant, 48, 9950, 500);
@@ -163,13 +181,14 @@ contract SLAEnforcementTest is Test {
     // --- Breach ---
 
     function test_recordBreach() public {
-        _registerProvider();
+        _registerAndApproveProvider();
 
         vm.prank(provider);
         uint256 slaId = slaContract.createSLA{value: 1 ether}(tenant, 48, 9950, 500);
 
         uint256 tenantBalBefore = tenant.balance;
-        slaContract.recordBreach(slaId, 9800, 500); // 5% penalty
+        vm.prank(creForwarder);
+        slaContract.recordBreach(slaId, 9800); // penaltyBps read from SLA storage (500 = 5%)
 
         (,, uint256 bondAfter,,,,, bool active) = slaContract.slas(slaId);
         assertEq(bondAfter, 0.95 ether);
@@ -178,23 +197,36 @@ contract SLAEnforcementTest is Test {
     }
 
     function test_recordBreachDrainsFullBond() public {
-        _registerProvider();
+        _registerAndApproveProvider();
 
         vm.prank(provider);
         uint256 slaId = slaContract.createSLA{value: 1 ether}(tenant, 48, 9950, 10000);
 
-        slaContract.recordBreach(slaId, 9800, 10000);
+        vm.prank(creForwarder);
+        slaContract.recordBreach(slaId, 9800);
 
         (,, uint256 bondAfter,,,,, bool active) = slaContract.slas(slaId);
         assertEq(bondAfter, 0);
         assertFalse(active);
     }
 
+    function test_RevertWhen_NonCRECallsRecordBreach() public {
+        _registerAndApproveProvider();
+
+        vm.prank(provider);
+        uint256 slaId = slaContract.createSLA{value: 1 ether}(tenant, 48, 9950, 500);
+
+        address attacker = address(0xBAD);
+        vm.expectRevert("Only CRE forwarder");
+        vm.prank(attacker);
+        slaContract.recordBreach(slaId, 9800);
+    }
+
     // --- Arbitration ---
 
     function test_arbitrate() public {
         _registerArbitrator();
-        _registerProvider();
+        _registerAndApproveProvider();
 
         vm.prank(provider);
         uint256 slaId = slaContract.createSLA{value: 1 ether}(tenant, 48, 9950, 500);
@@ -215,12 +247,77 @@ contract SLAEnforcementTest is Test {
     // --- Collateral ---
 
     function test_getCollateralRatio() public {
-        _registerProvider();
+        _registerAndApproveProvider();
 
         vm.prank(provider);
         uint256 slaId = slaContract.createSLA{value: 1 ether}(tenant, 48, 9950, 500);
 
         uint256 ratio = slaContract.getCollateralRatio(slaId);
         assertGt(ratio, 0);
+    }
+
+    // --- Compliance ---
+
+    function test_SetCompliance_PermanentRejection() public {
+        vm.prank(creForwarder);
+        slaContract.setComplianceStatus(provider, SLAEnforcement.ComplianceStatus.REJECTED);
+
+        vm.prank(creForwarder);
+        vm.expectRevert("Permanently blocked");
+        slaContract.setComplianceStatus(provider, SLAEnforcement.ComplianceStatus.APPROVED);
+    }
+
+    function test_SetCompliance_OnlyCRE() public {
+        vm.expectRevert("Only CRE forwarder");
+        vm.prank(provider);
+        slaContract.setComplianceStatus(provider, SLAEnforcement.ComplianceStatus.APPROVED);
+    }
+
+    // --- Breach Warning ---
+
+    function test_BreachWarning() public {
+        _registerAndApproveProvider();
+        vm.prank(provider);
+        uint256 slaId = slaContract.createSLA{value: 1 ether}(tenant, 48, 9950, 500);
+
+        vm.prank(creForwarder);
+        slaContract.recordBreachWarning(slaId, 85, "Uptime declining");
+    }
+
+    function test_BreachWarning_Cooldown() public {
+        _registerAndApproveProvider();
+        vm.prank(provider);
+        uint256 slaId = slaContract.createSLA{value: 1 ether}(tenant, 48, 9950, 500);
+
+        vm.prank(creForwarder);
+        slaContract.recordBreachWarning(slaId, 85, "Uptime declining");
+
+        vm.prank(creForwarder);
+        vm.expectRevert("Warning cooldown");
+        slaContract.recordBreachWarning(slaId, 90, "Still declining");
+
+        // Warp past cooldown
+        vm.warp(block.timestamp + 4 hours + 1);
+        vm.prank(creForwarder);
+        slaContract.recordBreachWarning(slaId, 90, "Still declining"); // succeeds
+    }
+
+    function test_BreachWarning_OnlyCRE() public {
+        vm.expectRevert("Only CRE forwarder");
+        vm.prank(provider);
+        slaContract.recordBreachWarning(0, 85, "Uptime declining");
+    }
+
+    // --- Breach Count ---
+
+    function test_breachCount_Increments() public {
+        _registerAndApproveProvider();
+        vm.prank(provider);
+        uint256 slaId = slaContract.createSLA{value: 1 ether}(tenant, 48, 9950, 500);
+
+        assertEq(slaContract.breachCount(), 0);
+        vm.prank(creForwarder);
+        slaContract.recordBreach(slaId, 9800);
+        assertEq(slaContract.breachCount(), 1);
     }
 }
