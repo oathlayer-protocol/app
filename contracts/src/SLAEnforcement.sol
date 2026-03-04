@@ -262,13 +262,14 @@ contract SLAEnforcement {
         require(penaltyAmount <= sla.bondAmount, "Penalty exceeds bond");
 
         sla.bondAmount -= penaltyAmount;
-        payable(sla.tenant).transfer(penaltyAmount);
-
         if (sla.bondAmount == 0) {
             sla.active = false;
         }
-
         breachCount++;
+
+        // Use call() instead of transfer() — supports smart contract tenants (multisigs, Gnosis Safe)
+        (bool success, ) = payable(sla.tenant).call{value: penaltyAmount}("");
+        require(success, "ETH transfer failed");
         emit SLABreached(slaId, sla.provider, uptimeBps, penaltyAmount);
     }
 

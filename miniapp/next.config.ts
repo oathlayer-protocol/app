@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  allowedDevOrigins: ["oathlayer-miniapp.robbyn.xyz"],
 };
 
 export default nextConfig;

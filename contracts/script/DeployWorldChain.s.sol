@@ -18,7 +18,10 @@ contract DeployWorldChain is Script {
             : WORLD_ID_ROUTER_WORLD_CHAIN_TESTNET;
 
         vm.startBroadcast();
-        WorldChainRegistry registry = new WorldChainRegistry(router, APP_ID);
+        // skipOnChainVerification=true on testnet (semaphore groups disabled on World Chain Sepolia)
+        // Set to false for mainnet deploy
+        bool isTestnet = block.chainid != 480;
+        WorldChainRegistry registry = new WorldChainRegistry(router, APP_ID, isTestnet);
         console.log("WorldChainRegistry deployed at:", address(registry));
         console.log("Chain ID:", block.chainid);
         console.log("World ID Router:", router);

@@ -8,7 +8,7 @@ import {
   MiniAppSendTransactionPayload,
 } from "@worldcoin/minikit-js";
 import { motion, AnimatePresence } from "framer-motion";
-import { encodeFunctionData, parseAbi } from "viem";
+import { parseAbi } from "viem";
 
 type Screen = "home" | "register" | "slas" | "claim";
 
@@ -43,27 +43,27 @@ export default function App() {
       const { finalPayload } = await MiniKit.commandsAsync.verify({
         action: "oathlayer-provider-register",
         signal: "",
-        verification_level: VerificationLevel.Orb,
+        verification_level: VerificationLevel.Device,
       });
 
       if (finalPayload.status === "error") {
-        throw new Error("World ID verification failed");
+        throw new Error(`World ID error: ${JSON.stringify(finalPayload)}`);
       }
 
       const proof = finalPayload as ISuccessResult;
+      console.log("=== MINIKIT PAYLOAD ===", JSON.stringify(finalPayload));
 
+      // Send full payload so backend can forward whatever format World ID 4.0 needs
       const res = await fetch("/api/register-provider", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          proof: proof.proof,
-          merkle_root: proof.merkle_root,
-          nullifier_hash: proof.nullifier_hash,
-          verification_level: proof.verification_level,
-        }),
+        body: JSON.stringify(finalPayload),
       });
 
-      if (!res.ok) throw new Error("Registration failed");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || err.error || "Registration failed");
+      }
 
       const data = await res.json();
       setTxStatus(`Registered! CRE will relay to Sepolia. Tx: ${data.txHash?.slice(0, 12)}...`);
@@ -84,12 +84,6 @@ export default function App() {
         // Outside World App — show error
         throw new Error("Please open in World App to file claims");
       }
-
-      const calldata = encodeFunctionData({
-        abi: FILE_CLAIM_ABI,
-        functionName: "fileClaim",
-        args: [BigInt(claimForm.slaId), claimForm.description],
-      });
 
       const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
@@ -180,7 +174,7 @@ export default function App() {
               <p className="text-xs font-semibold text-gray-400 mb-3">HOW IT WORKS</p>
               <div className="space-y-2">
                 {[
-                  { step: "1", text: "Verify identity with World ID (Orb)" },
+                  { step: "1", text: "Verify identity with World ID" },
                   { step: "2", text: "CRE relays your registration to Sepolia" },
                   { step: "3", text: "Bond ETH as SLA collateral" },
                   { step: "4", text: "CRE auto-enforces uptime breaches" },

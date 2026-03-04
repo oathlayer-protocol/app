@@ -146,7 +146,7 @@ export default function RegisterProvider() {
             <IDKitWidget
               app_id={(process.env.NEXT_PUBLIC_WLD_APP_ID || "app_staging_oathlayer") as `app_${string}`}
               action="oathlayer-provider-register"
-              signal={address}
+              signal={address ?? ""}
               verification_level={VerificationLevel.Device}
               handleVerify={handleVerify}
               onSuccess={() => {}}

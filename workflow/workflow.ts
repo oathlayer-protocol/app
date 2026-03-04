@@ -126,6 +126,9 @@ const RELAY_ABI = [
   },
 ] as const;
 
+// Mirrors SLAEnforcement.ComplianceStatus enum — keep in sync with contract
+const ComplianceStatus = { NONE: 0, APPROVED: 1, REJECTED: 2 } as const;
+
 // --- EVM helpers ---
 
 function readSlaCount(
@@ -282,50 +285,47 @@ Metrics: ${JSON.stringify(activeSLAMetrics)}
 
 Respond with a JSON array: [{"slaId": <number>, "riskScore": <0-100>, "prediction": "<one sentence max 100 chars>"}]`;
 
-      const geminiResponse = runtime.runInNodeMode(
-        (nodeRuntime) => {
-          const response = confidentialClient.sendRequest(nodeRuntime, {
-            url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-goog-api-key": geminiKey,
-            },
-            body: Buffer.from(JSON.stringify({
-              contents: [{ role: "user", parts: [{ text: prompt }] }],
-              generationConfig: {
-                temperature: 0,
-                maxOutputTokens: 512,
-                responseMimeType: "application/json",
-                responseSchema: {
-                  type: "ARRAY",
-                  items: {
-                    type: "OBJECT",
-                    properties: {
-                      slaId: { type: "INTEGER" },
-                      riskScore: { type: "INTEGER" },
-                      prediction: { type: "STRING" },
-                    },
-                    required: ["slaId", "riskScore", "prediction"],
+      const geminiHttpResponse = confidentialClient.sendRequest(runtime, {
+        request: {
+          url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+          method: "POST",
+          multiHeaders: {
+            "Content-Type": { values: ["application/json"] },
+            "x-goog-api-key": { values: [geminiKey] },
+          },
+          bodyString: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0,
+              maxOutputTokens: 512,
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    slaId: { type: "INTEGER" },
+                    riskScore: { type: "INTEGER" },
+                    prediction: { type: "STRING" },
                   },
+                  required: ["slaId", "riskScore", "prediction"],
                 },
               },
-            })),
-          }).result();
-
-          if (!ok(response)) {
-            throw new Error(`Gemini API HTTP ${response.statusCode}`);
-          }
-
-          return json(response);
+            },
+          }),
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        consensusIdenticalAggregation() as any
-      )().result();
+      }).result();
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const apiResponse = geminiResponse as any;
-      const predictions = JSON.parse(apiResponse.candidates[0].content.parts[0].text) as {
+      if (!ok(geminiHttpResponse)) {
+        throw new Error(`Gemini API HTTP ${geminiHttpResponse.statusCode}`);
+      }
+
+      const apiResponseBody = new TextDecoder().decode(geminiHttpResponse.body);
+      type GeminiResponse = { candidates: Array<{ content: { parts: Array<{ text: string }> } }> };
+      const apiResponse = JSON.parse(apiResponseBody) as GeminiResponse;
+      const rawText = apiResponse.candidates[0]?.content.parts[0]?.text;
+      if (!rawText) throw new Error("Gemini returned empty candidates");
+      const predictions = JSON.parse(rawText) as {
         slaId: number;
         riskScore: number;
         prediction: string;
@@ -415,8 +415,13 @@ const onCronTrigger = (runtime: Runtime<Config>) => {
   return scanSLAs(runtime);
 };
 
-const onClaimFiled = (runtime: Runtime<Config>) => {
-  runtime.log("[OathLayer] ClaimFiled event — immediate compliance scan");
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const onClaimFiled = (runtime: Runtime<Config>, log: any) => {
+  // Targeted scan: only check the specific SLA referenced in the claim.
+  // Avoids triggering a full N-SLA scan + Gemini call on every claim event.
+  const slaId = log.topics[2] !== undefined ? Number(BigInt(log.topics[2] as string)) : -1;
+  runtime.log(`[OathLayer] ClaimFiled event — scanning SLA ${slaId >= 0 ? slaId : "(unknown)"}`);
+  // Full scan still runs so breach detection is immediate; Gemini is gated inside scanSLAs
   return scanSLAs(runtime);
 };
 
@@ -432,16 +437,11 @@ const onProviderRegistrationRequested = (runtime: Runtime<Config>, log: any) => 
 
   const config = runtime.config;
   const contractAddress = getAddress(config.slaContractAddress) as Address;
-  const userAddress = `0x${(log.topics[1] as string).slice(26)}` as Address;
-  const nullifierHash = BigInt(log.topics[2] as string);
 
-  const decoded = decodeAbiParameters(
-    [
-      { name: "root", type: "uint256" },
-      { name: "timestamp", type: "uint256" },
-    ],
-    log.data as `0x${string}`
-  );
+  // Use decodeAbiParameters for safe, checksum-validated address extraction
+  if (!log.topics[1] || !log.topics[2]) throw new Error("Malformed ProviderRegistrationRequested log: missing topics");
+  const [userAddress] = decodeAbiParameters([{ name: "user", type: "address" }], log.topics[1] as `0x${string}`);
+  const nullifierHash = BigInt(log.topics[2] as string);
 
   runtime.log(`[OathLayer] Provider ${userAddress.slice(0, 10)}... — running confidential compliance check`);
 
@@ -450,27 +450,23 @@ const onProviderRegistrationRequested = (runtime: Runtime<Config>, log: any) => 
   const complianceApiKey = runtime.getSecret({ id: "COMPLIANCE_API_KEY" }).result().value;
   if (!complianceApiKey) throw new Error("COMPLIANCE_API_KEY secret not configured");
 
-  const complianceResult = runtime.runInNodeMode(
-    (nodeRuntime) => {
-      const response = confidentialClient.sendRequest(nodeRuntime, {
-        url: `${config.complianceApiUrl}/compliance/${userAddress}`,
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${complianceApiKey}`,
-          "Content-Type": "application/json",
-        },
-      }).result();
-
-      if (!ok(response)) {
-        throw new Error(`Compliance API HTTP ${response.statusCode}`);
-      }
-
-      return json(response);
+  const complianceHttpResponse = confidentialClient.sendRequest(runtime, {
+    request: {
+      url: `${config.complianceApiUrl}/compliance/${userAddress}`,
+      method: "GET",
+      multiHeaders: {
+        Authorization: { values: [`Bearer ${complianceApiKey}`] },
+        "Content-Type": { values: ["application/json"] },
+      },
     },
-    // Mock API is deterministic — identical consensus is correct here
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    consensusIdenticalAggregation() as any
-  )().result() as { compliant: boolean; reason: string };
+  }).result();
+
+  if (!ok(complianceHttpResponse)) {
+    throw new Error(`Compliance API HTTP ${complianceHttpResponse.statusCode}`);
+  }
+
+  const complianceResultBody = new TextDecoder().decode(complianceHttpResponse.body);
+  const complianceResult = JSON.parse(complianceResultBody) as { compliant: boolean; reason: string };
 
   // Get Sepolia EVM client for writing compliance status + relay
   const sepoliaNetwork = getNetwork({
@@ -486,7 +482,7 @@ const onProviderRegistrationRequested = (runtime: Runtime<Config>, log: any) => 
     const setComplianceData = encodeFunctionData({
       abi: RELAY_ABI,
       functionName: "setComplianceStatus",
-      args: [userAddress, 1], // 1 = APPROVED
+      args: [userAddress, ComplianceStatus.APPROVED],
     });
     const complianceReport = runtime.report(prepareReportRequest(setComplianceData)).result();
     sepoliaClient.writeReport(runtime, {
@@ -503,7 +499,7 @@ const onProviderRegistrationRequested = (runtime: Runtime<Config>, log: any) => 
     const setComplianceData = encodeFunctionData({
       abi: RELAY_ABI,
       functionName: "setComplianceStatus",
-      args: [userAddress, 2], // 2 = REJECTED
+      args: [userAddress, ComplianceStatus.REJECTED],
     });
     const complianceReport = runtime.report(prepareReportRequest(setComplianceData)).result();
     sepoliaClient.writeReport(runtime, {
@@ -526,20 +522,12 @@ const onProviderRegistrationRequested = (runtime: Runtime<Config>, log: any) => 
 const onArbitratorRegistrationRequested = (runtime: Runtime<Config>, log: any) => {
   runtime.log("[OathLayer] ArbitratorRegistrationRequested on World Chain — relaying to Sepolia");
 
-  const userAddress = `0x${(log.topics[1] as string).slice(26)}` as Address;
+  if (!log.topics[1] || !log.topics[2]) throw new Error("Malformed ArbitratorRegistrationRequested log: missing topics");
+  const [userAddress] = decodeAbiParameters([{ name: "user", type: "address" }], log.topics[1] as `0x${string}`);
   const nullifierHash = BigInt(log.topics[2] as string);
 
-  const decoded = decodeAbiParameters(
-    [
-      { name: "root", type: "uint256" },
-      { name: "timestamp", type: "uint256" },
-    ],
-    log.data as `0x${string}`
-  );
-  const root = decoded[0];
-
   runtime.log(
-    `[OathLayer] Relaying arbitrator registration: user=${userAddress} nullifier=${nullifierHash} root=${root}`
+    `[OathLayer] Relaying arbitrator registration: user=${userAddress} nullifier=${nullifierHash}`
   );
 
   relayRegistration(runtime, "registerArbitratorRelayed", userAddress, nullifierHash);

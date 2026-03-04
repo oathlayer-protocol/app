@@ -1,17 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { SLA_CONTRACT_ADDRESS, SLA_ABI } from "@/lib/contract";
+import { formatEther, parseAbiItem } from "viem";
+import { SLA_CONTRACT_ADDRESS, SLA_ABI, DEPLOY_BLOCK } from "@/lib/contract";
 
-// TODO: Wire to live breach events via getLogs (secondary page — not in core demo flow)
-const MOCK_BREACHES: { slaId: number; provider: string; uptimeBps: number; penaltyAmount: string; timestamp: string; txHash: string }[] = [];
+type BreachEvent = {
+  slaId: number;
+  provider: string;
+  uptimeBps: number;
+  penaltyAmount: string;
+  blockNumber: bigint;
+  txHash: string;
+};
 
 export default function Claims() {
   const { address, isConnected } = useAccount();
   const [form, setForm] = useState({ slaId: "0", description: "" });
+  const [breaches, setBreaches] = useState<BreachEvent[]>([]);
+  const publicClient = usePublicClient();
 
   const { writeContract, data: txHash, isPending, error, reset } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
@@ -22,6 +31,36 @@ export default function Claims() {
     abi: SLA_ABI,
     functionName: "claimCount",
   });
+
+  // Fetch historical SLABreached events
+  useEffect(() => {
+    if (!publicClient) return;
+    const fetchBreaches = async () => {
+      try {
+        const logs = await publicClient.getLogs({
+          address: SLA_CONTRACT_ADDRESS,
+          event: parseAbiItem("event SLABreached(uint256 indexed slaId, address indexed provider, uint256 uptimeBps, uint256 penaltyAmount)"),
+          fromBlock: DEPLOY_BLOCK,
+          toBlock: "latest",
+        });
+        setBreaches(
+          logs.map((log) => ({
+            slaId: Number(log.args.slaId),
+            provider: log.args.provider as string,
+            uptimeBps: Number(log.args.uptimeBps),
+            penaltyAmount: formatEther(log.args.penaltyAmount ?? BigInt(0)),
+            blockNumber: log.blockNumber,
+            txHash: log.transactionHash,
+          })).reverse()
+        );
+      } catch (e) {
+        console.error("Failed to fetch breach events:", e);
+      }
+    };
+    fetchBreaches();
+    const interval = setInterval(fetchBreaches, 30_000);
+    return () => clearInterval(interval);
+  }, [publicClient]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,33 +154,48 @@ export default function Claims() {
         </div>
       )}
 
-      {/* Recent Breaches (from CRE events) */}
+      {/* Recent Breaches (from on-chain events) */}
       <div>
         <h2 className="text-lg font-semibold text-white mb-4">Recent CRE-Enforced Breaches</h2>
-        <div className="space-y-3">
-          {MOCK_BREACHES.map((breach, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="rounded-xl p-4 border"
-              style={{ background: 'var(--card)', borderColor: 'var(--card-border)' }}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-white text-sm font-medium">SLA #{breach.slaId} — Uptime breach detected</p>
-                  <p className="text-gray-400 text-xs mt-1">
-                    Provider {breach.provider} &middot; Uptime {breach.uptimeBps / 100}% &middot; Penalty {breach.penaltyAmount} ETH
-                  </p>
-                  <p className="text-gray-500 text-xs mt-0.5">{new Date(breach.timestamp).toLocaleString()}</p>
+        {breaches.length === 0 ? (
+          <p className="text-gray-500 text-sm">No breach events detected yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {breaches.map((breach, i) => (
+              <motion.div
+                key={breach.txHash}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: i * 0.05 }}
+                className="rounded-xl p-4 border"
+                style={{ background: 'var(--card)', borderColor: 'var(--card-border)' }}
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-white text-sm font-medium">SLA #{breach.slaId} — Uptime breach detected</p>
+                    <p className="text-gray-400 text-xs mt-1">
+                      Provider {breach.provider.slice(0, 10)}... &middot; Uptime {(breach.uptimeBps / 100).toFixed(2)}% &middot; Penalty {breach.penaltyAmount} ETH
+                    </p>
+                    <p className="text-gray-500 text-xs mt-0.5 font-mono">
+                      Block {breach.blockNumber.toString()} &middot;{" "}
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_TENDERLY_EXPLORER}/tx/${breach.txHash}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline"
+                      >
+                        {breach.txHash.slice(0, 14)}...
+                      </a>
+                    </p>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-xs text-red-400 bg-red-400/10">
+                    Auto-Penalized
+                  </span>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-xs text-red-400 bg-red-400/10">
-                  Auto-Penalized
-                </span>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

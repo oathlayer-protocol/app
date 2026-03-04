@@ -215,6 +215,65 @@ npm run dev  # runs on :3000
 | Mobile | World Mini App SDK (MiniKit) |
 | Charts | Recharts |
 
+## Testing & Verification Notes
+
+### World ID — Orb vs Device Level
+
+In production, OathLayer uses **Orb-level** World ID verification for provider registration — the highest trust tier requiring in-person biometric verification at a World ID Orb. This prevents Sybil attacks on SLA providers and ensures one human = one provider identity.
+
+**For hackathon testing**, provider registration is downgraded to **Device level** (phone signup only, no Orb required) so judges can verify the full flow without physical Orb access. The cryptographic proof structure, ZK verification, and on-chain relay are identical between levels — only the trust tier changes.
+
+| Flow | Production | Hackathon Testing |
+|---|---|---|
+| Provider registration | Orb level (biometric) | Device level (phone signup) |
+| Arbitrator registration | Device level | Device level ✅ |
+| fileClaim (Mini App) | Device level | Device level ✅ |
+
+### Mini App Testing
+
+The Mini App (`https://oathlayer-miniapp.robbyn.xyz`) requires **World App** on mobile — it cannot run in a regular browser as MiniKit is only injected inside World App's built-in browser.
+
+**To test the Mini App:**
+1. Install [World App](https://worldcoin.org/download) on iOS or Android
+2. Create an account (no Orb needed for Device level)
+3. Tap the explore icon → enter `https://oathlayer-miniapp.robbyn.xyz`
+4. Register as provider → verify with World ID (Device) → done
+
+### Dashboard Testing (No Mobile Required)
+
+The full enforcement flow can be verified on the dashboard alone:
+
+```bash
+# 1. Start services
+cd workflow/mock-api && npm run dev        # :3001 — mock uptime + compliance API
+cd dashboard && npm run dev                # :3000 — dashboard
+
+# 2. Whitelist yourself as provider (bypasses World ID for local testing)
+cast send 0x8286A8cfA5c8C1872097D9b43E01CbdEe934D319 \
+  "setComplianceStatus(address,uint8)" <YOUR_ADDRESS> 1 \
+  --rpc-url https://virtual.sepolia.eu.rpc.tenderly.co/31c848ed-b45f-4f46-a7ab-7506091ac79e \
+  --private-key <YOUR_KEY>
+
+# 3. Create SLA on dashboard → /sla/create
+# 4. Force a breach via mock API
+curl -X POST http://localhost:3001/set-uptime \
+  -H "x-admin-token: demo-secret" \
+  -H "Content-Type: application/json" \
+  -d '{"uptime": 90.0}'
+
+# 5. Run CRE workflow to detect breach and write on-chain
+cd workflow && npm run simulate:broadcast
+
+# 6. Watch dashboard update — breach warning, bond slashed, breach history
+```
+
+### Tenderly Explorer
+
+All transactions are publicly verifiable (no wallet needed):
+`https://dashboard.tenderly.co/robbyn/project/testnet/5c780e4f-4df5-4a50-b221-2342cd4b713e`
+
+---
+
 ## Known Limitations
 
 - Cross-chain relay trust model: CRE DON is trust anchor, World ID root not re-verified on Sepolia

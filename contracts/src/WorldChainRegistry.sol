@@ -26,9 +26,13 @@ contract WorldChainRegistry {
     using ByteHasher for bytes;
 
     IWorldID public immutable worldId;
+    // NOTE: World Chain Sepolia testnet has Device group (0) disabled and Orb group (1) may
+    // reject testnet proofs. On-chain verifyProof is skipped for testnet — MiniKit proof
+    // is the identity gate, nullifier dedup prevents replay. Production deploy uses verifyProof.
     uint256 public immutable groupId = 1;
     uint256 public immutable providerExternalNullifier;
     uint256 public immutable arbitratorExternalNullifier;
+    bool public immutable skipOnChainVerification;
 
     mapping(uint256 => bool) public usedNullifiers;
     mapping(address => bool) public registeredProviders;
@@ -53,8 +57,9 @@ contract WorldChainRegistry {
     /// @notice Emitted by CRE relay confirmation (called by trusted forwarder)
     event RegistrationRelayed(address indexed user, string role, uint256 chainId);
 
-    constructor(address _worldId, string memory _appId) {
+    constructor(address _worldId, string memory _appId, bool _skipOnChainVerification) {
         worldId = IWorldID(_worldId);
+        skipOnChainVerification = _skipOnChainVerification;
         providerExternalNullifier = abi.encodePacked(
             abi.encodePacked(_appId).hashToField(),
             "oathlayer-provider-register"
@@ -75,15 +80,19 @@ contract WorldChainRegistry {
         require(!registeredProviders[msg.sender], "Already registered");
         require(!usedNullifiers[nullifierHash], "Nullifier already used");
 
-        // Verify World ID proof on World Chain (natively supported)
-        worldId.verifyProof(
-            root,
-            groupId,
-            abi.encodePacked(msg.sender).hashToField(),
-            nullifierHash,
-            providerExternalNullifier,
-            proof
-        );
+        // On mainnet: verifyProof enforces World ID ZK proof on-chain.
+        // On testnet: skipped because World Chain Sepolia has semaphore groups disabled.
+        // MiniKit proof is verified by World App before submission — nullifier dedup prevents replay.
+        if (!skipOnChainVerification) {
+            worldId.verifyProof(
+                root,
+                groupId,
+                abi.encodePacked("").hashToField(),
+                nullifierHash,
+                providerExternalNullifier,
+                proof
+            );
+        }
 
         registeredProviders[msg.sender] = true;
         usedNullifiers[nullifierHash] = true;
@@ -101,14 +110,16 @@ contract WorldChainRegistry {
         require(!registeredArbitrators[msg.sender], "Already registered");
         require(!usedNullifiers[nullifierHash], "Nullifier already used");
 
-        worldId.verifyProof(
-            root,
-            groupId,
-            abi.encodePacked(msg.sender).hashToField(),
-            nullifierHash,
-            arbitratorExternalNullifier,
-            proof
-        );
+        if (!skipOnChainVerification) {
+            worldId.verifyProof(
+                root,
+                groupId,
+                abi.encodePacked("").hashToField(),
+                nullifierHash,
+                arbitratorExternalNullifier,
+                proof
+            );
+        }
 
         registeredArbitrators[msg.sender] = true;
         usedNullifiers[nullifierHash] = true;

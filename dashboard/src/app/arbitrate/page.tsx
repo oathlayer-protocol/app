@@ -1,28 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { IDKitWidget, VerificationLevel, type ISuccessResult } from "@worldcoin/idkit";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { SLA_CONTRACT_ADDRESS, SLA_ABI } from "@/lib/contract";
-
-// TODO: Wire to live breach events via getLogs (secondary page — not in core demo flow)
-const MOCK_BREACHES: { slaId: number; provider: string; uptimeBps: number; penaltyAmount: string; timestamp: string; txHash: string }[] = [];
+import { formatEther, parseAbiItem } from "viem";
+import { SLA_CONTRACT_ADDRESS, SLA_ABI, DEPLOY_BLOCK } from "@/lib/contract";
 import { decodeProof } from "@/lib/proof";
+
+type BreachEvent = {
+  slaId: number;
+  provider: string;
+  uptimeBps: number;
+  penaltyAmount: string;
+  blockNumber: bigint;
+  txHash: string;
+};
 
 function DisputeCard({
   slaId,
   provider,
   uptimeBps,
   penaltyAmount,
-  timestamp,
 }: {
   slaId: number;
   provider: string;
   uptimeBps: number;
   penaltyAmount: string;
-  timestamp: string;
 }) {
   const { writeContract, data: txHash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
@@ -50,8 +55,8 @@ function DisputeCard({
       <div className="flex items-start justify-between mb-4">
         <div>
           <p className="font-medium text-white">SLA #{slaId} Breach Dispute</p>
-          <p className="text-sm text-gray-400 mt-1">Provider {provider} &middot; Uptime {uptimeBps / 100}%</p>
-          <p className="text-sm text-gray-400">Penalty: {penaltyAmount} ETH &middot; {new Date(timestamp).toLocaleString()}</p>
+          <p className="text-sm text-gray-400 mt-1">Provider {provider.slice(0, 10)}... &middot; Uptime {(uptimeBps / 100).toFixed(2)}%</p>
+          <p className="text-sm text-gray-400">Penalty: {penaltyAmount} ETH</p>
         </div>
         <span className={`px-2 py-0.5 rounded-full text-xs ${isSuccess ? 'text-green-400 bg-green-400/10' : 'text-yellow-400 bg-yellow-400/10'}`}>
           {isSuccess ? (decided ? 'Breach Upheld' : 'Overturned') : 'Pending Review'}
@@ -98,6 +103,8 @@ function DisputeCard({
 export default function Arbitrate() {
   const { address, isConnected } = useAccount();
   const [proof, setProof] = useState<ISuccessResult | null>(null);
+  const [breaches, setBreaches] = useState<BreachEvent[]>([]);
+  const publicClient = usePublicClient();
 
   const { data: isVerifiedArbitrator } = useReadContract({
     address: SLA_CONTRACT_ADDRESS,
@@ -109,6 +116,36 @@ export default function Arbitrate() {
 
   const { writeContract, data: regTxHash, isPending: regPending, error: regError } = useWriteContract();
   const { isLoading: regConfirming, isSuccess: regSuccess } = useWaitForTransactionReceipt({ hash: regTxHash });
+
+  // Fetch historical SLABreached events for arbitration
+  useEffect(() => {
+    if (!publicClient) return;
+    const fetchBreaches = async () => {
+      try {
+        const logs = await publicClient.getLogs({
+          address: SLA_CONTRACT_ADDRESS,
+          event: parseAbiItem("event SLABreached(uint256 indexed slaId, address indexed provider, uint256 uptimeBps, uint256 penaltyAmount)"),
+          fromBlock: DEPLOY_BLOCK,
+          toBlock: "latest",
+        });
+        setBreaches(
+          logs.map((log) => ({
+            slaId: Number(log.args.slaId),
+            provider: log.args.provider as string,
+            uptimeBps: Number(log.args.uptimeBps),
+            penaltyAmount: formatEther(log.args.penaltyAmount ?? BigInt(0)),
+            blockNumber: log.blockNumber,
+            txHash: log.transactionHash,
+          })).reverse()
+        );
+      } catch (e) {
+        console.error("Failed to fetch breach events:", e);
+      }
+    };
+    fetchBreaches();
+    const interval = setInterval(fetchBreaches, 30_000);
+    return () => clearInterval(interval);
+  }, [publicClient]);
 
   const handleVerify = async (result: ISuccessResult) => {
     const res = await fetch("/api/verify-worldid", {
@@ -164,7 +201,7 @@ export default function Arbitrate() {
           <IDKitWidget
             app_id={(process.env.NEXT_PUBLIC_WLD_APP_ID || "app_staging_oathlayer") as `app_${string}`}
             action="oathlayer-arbitrator-register"
-            signal={address}
+            signal={address ?? ""}
             verification_level={VerificationLevel.Device}
             handleVerify={handleVerify}
             onSuccess={() => {}}
@@ -207,10 +244,19 @@ export default function Arbitrate() {
         <p className="text-gray-400">Review and resolve disputed SLA breaches.</p>
       </div>
 
-      {MOCK_BREACHES.map((dispute, i) => (
-        <DisputeCard key={i} {...dispute} />
-      ))}
+      {breaches.length === 0 ? (
+        <p className="text-gray-500 text-sm">No breach disputes to review.</p>
+      ) : (
+        breaches.map((dispute) => (
+          <DisputeCard
+            key={dispute.txHash}
+            slaId={dispute.slaId}
+            provider={dispute.provider}
+            uptimeBps={dispute.uptimeBps}
+            penaltyAmount={dispute.penaltyAmount}
+          />
+        ))
+      )}
     </div>
   );
 }
-

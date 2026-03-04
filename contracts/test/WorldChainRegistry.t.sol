@@ -25,7 +25,7 @@ contract WorldChainRegistryTest is Test {
 
     function setUp() public {
         mockWorldId = new MockWorldIDRegistry();
-        registry = new WorldChainRegistry(address(mockWorldId), "app_test");
+        registry = new WorldChainRegistry(address(mockWorldId), "app_test", false);
     }
 
     function test_requestProviderRegistration() public {

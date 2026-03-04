@@ -33,9 +33,10 @@ World Chain (4801)          CRE Workflows              Sepolia (Tenderly VNet)
 
 ## Deployment
 
-- **SLAEnforcement**: Tenderly VNet (Sepolia fork) — `0xB71247A5744b5c0e16a2b4374A34aCa8319703dB`
-- **WorldChainRegistry**: World Chain Sepolia (4801)
-- **RPC**: `https://virtual.sepolia.eu.rpc.tenderly.co/47ad454d-8109-4ccb-9285-7ab201835e5d`
+- **SLAEnforcement**: Tenderly VNet (Sepolia fork) — `0x8286A8cfA5c8C1872097D9b43E01CbdEe934D319`
+- **WorldChainRegistry**: World Chain Sepolia (4801) — `0xe1349d2c44422b70c73bf767afb58ae1c59cd1fd`
+- **Sepolia RPC**: `https://virtual.sepolia.eu.rpc.tenderly.co/47ad454d-8109-4ccb-9285-7ab201835e5d`
+- **World Chain RPC**: `https://worldchain-sepolia.g.alchemy.com/public`
 
 ## Commands
 
@@ -57,7 +58,8 @@ cd dashboard && npm install && npm run dev
 
 - Solidity: Foundry style, `require()` strings for errors (not custom errors — hackathon simplicity)
 - TypeScript: CRE SDK patterns — `runtime.runInNodeMode()` for consensus, `.result()` for sync unwrap
-- Dashboard: wagmi hooks, `useReadContracts` multicall for batch reads, `getLogs` for historical events
+- Dashboard: wagmi hooks, `useReadContracts` multicall for batch reads, `getLogs` on mount for history + `useWatchContractEvent` (5s poll) for real-time (no duplicate 30s interval)
+- Dashboard events: deduplicated by blockNumber/txHash in `useWatchContractEvent` handlers
 - Tests: Foundry `vm.prank`/`vm.expectRevert`/`vm.warp` patterns
 - Access control: `onlyCREForwarder` modifier for all CRE-callable functions
 - Compliance: `ComplianceStatus` enum (NONE=0, APPROVED=1, REJECTED=2), rejection is permanent
