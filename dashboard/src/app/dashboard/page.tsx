@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useReadContract, useReadContracts, usePublicClient, useWatchContractEvent } from "wagmi";
 import { formatEther, parseAbiItem } from "viem";
 import { SLA_CONTRACT_ADDRESS, SLA_ABI, DEPLOY_BLOCK } from "@/lib/contract";
+import Link from "next/link";
 
 // --- Types ---
 type SLAData = {
@@ -35,45 +36,62 @@ type BreachEvent = {
   transactionHash: string;
 };
 
+// --- Animation variants ---
+const stagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.06 } },
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const } },
+};
+
 // --- Components ---
 
-function StatCard({ label, value, subtitle, color }: { label: string; value: string; subtitle?: string; color?: string }) {
+function StatCard({ label, value, subtitle }: { label: string; value: string; subtitle?: string }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl p-6 border"
-      style={{ background: 'var(--card)', borderColor: 'var(--card-border)' }}
+      variants={fadeUp}
+      className="glass-card glass-card-glow rounded-2xl p-5 md:p-6"
     >
-      <p className="text-sm text-gray-400">{label}</p>
-      <p className="text-3xl font-bold mt-1" style={{ color: color || 'white' }}>{value}</p>
-      {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+      <p className="text-[13px] font-medium" style={{ color: "var(--muted)" }}>{label}</p>
+      <p className="text-2xl md:text-3xl font-semibold mt-2 text-white tracking-tight">{value}</p>
+      {subtitle && <p className="text-[12px] mt-1.5" style={{ color: "var(--muted)" }}>{subtitle}</p>}
     </motion.div>
   );
 }
 
 function BondHealthBar({ bond, max }: { bond: number; max: number }) {
   const pct = max > 0 ? Math.min((bond / max) * 100, 100) : 0;
-  const color = pct > 66 ? '#22c55e' : pct > 33 ? '#f59e0b' : '#ef4444';
   return (
-    <div className="mt-2">
-      <div className="flex justify-between text-xs text-gray-400 mb-1">
+    <div className="mt-3">
+      <div className="flex justify-between text-[12px] mb-1.5" style={{ color: "var(--muted)" }}>
         <span>Bond Health</span>
-        <span>{bond.toFixed(4)} ETH</span>
+        <span className="text-white font-medium">{bond.toFixed(4)} ETH</span>
       </div>
-      <div className="h-2 rounded-full bg-gray-700">
-        <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+      <div className="h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
+        <div
+          className="h-1.5 rounded-full transition-all"
+          style={{ width: `${pct}%`, background: "var(--chainlink-blue)" }}
+        />
       </div>
     </div>
   );
 }
 
 function RiskBadge({ score }: { score: number }) {
-  const color = score > 70 ? '#ef4444' : score > 50 ? '#f59e0b' : '#22c55e';
-  const label = score > 70 ? 'High' : score > 50 ? 'Medium' : 'Low';
+  const isHigh = score > 70;
+  const isMed = score > 50;
   return (
-    <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ color, background: `${color}20` }}>
-      {label} ({score})
+    <span
+      className="px-2.5 py-1 rounded-md text-[11px] font-medium"
+      style={{
+        color: isHigh ? "#ef4444" : isMed ? "#f59e0b" : "var(--muted-strong)",
+        background: isHigh ? "rgba(239,68,68,0.1)" : isMed ? "rgba(245,158,11,0.1)" : "rgba(255,255,255,0.05)",
+      }}
+    >
+      {isHigh ? "High" : isMed ? "Medium" : "Low"} · {score}
     </span>
   );
 }
@@ -83,21 +101,18 @@ function RiskBadge({ score }: { score: number }) {
 export default function Dashboard() {
   const publicClient = usePublicClient();
 
-  // Read SLA count
   const { data: slaCount } = useReadContract({
     address: SLA_CONTRACT_ADDRESS,
     abi: SLA_ABI,
     functionName: "slaCount",
   });
 
-  // Read breach count from state var
   const { data: breachCount } = useReadContract({
     address: SLA_CONTRACT_ADDRESS,
     abi: SLA_ABI,
     functionName: "breachCount",
   });
 
-  // Batch read all SLAs via multicall
   const slaIds = Array.from({ length: Number(slaCount ?? 0) }, (_, i) => i);
   const { data: slaResults } = useReadContracts({
     contracts: slaIds.map(id => ({
@@ -108,30 +123,18 @@ export default function Dashboard() {
     })),
   });
 
-  // Parse SLA data
   const slas: SLAData[] = (slaResults ?? []).map((result, i) => {
-    if (result.status !== "success" || !result.result) {
-      return null;
-    }
+    if (result.status !== "success" || !result.result) return null;
     const r = result.result as readonly [string, string, bigint, bigint, bigint, bigint, bigint, boolean];
     return {
-      id: i,
-      provider: r[0],
-      tenant: r[1],
-      bondAmount: r[2],
-      responseTimeHrs: r[3],
-      minUptimeBps: r[4],
-      penaltyBps: r[5],
-      createdAt: r[6],
-      active: r[7],
+      id: i, provider: r[0], tenant: r[1], bondAmount: r[2], responseTimeHrs: r[3],
+      minUptimeBps: r[4], penaltyBps: r[5], createdAt: r[6], active: r[7],
     };
   }).filter(Boolean) as SLAData[];
 
-  // Historical breach warnings via getLogs
   const [breachWarnings, setBreachWarnings] = useState<BreachWarningEvent[]>([]);
   const [breachEvents, setBreachEvents] = useState<BreachEvent[]>([]);
 
-  // Load historical events once on mount
   useEffect(() => {
     if (!publicClient) return;
     const fetchEvents = async () => {
@@ -139,39 +142,29 @@ export default function Dashboard() {
         publicClient.getLogs({
           address: SLA_CONTRACT_ADDRESS,
           event: parseAbiItem("event BreachWarning(uint256 indexed slaId, uint256 riskScore, string prediction)"),
-          fromBlock: DEPLOY_BLOCK,
-          toBlock: "latest",
+          fromBlock: DEPLOY_BLOCK, toBlock: "latest",
         }),
         publicClient.getLogs({
           address: SLA_CONTRACT_ADDRESS,
           event: parseAbiItem("event SLABreached(uint256 indexed slaId, address indexed provider, uint256 uptimeBps, uint256 penaltyAmount)"),
-          fromBlock: DEPLOY_BLOCK,
-          toBlock: "latest",
+          fromBlock: DEPLOY_BLOCK, toBlock: "latest",
         }),
       ]);
       setBreachWarnings(warningLogs.map(log => ({
-        slaId: log.args.slaId!,
-        riskScore: log.args.riskScore!,
-        prediction: log.args.prediction!,
-        blockNumber: log.blockNumber,
+        slaId: log.args.slaId!, riskScore: log.args.riskScore!,
+        prediction: log.args.prediction!, blockNumber: log.blockNumber,
       })));
       setBreachEvents(breachLogs.map(log => ({
-        slaId: log.args.slaId!,
-        provider: log.args.provider!,
-        uptimeBps: log.args.uptimeBps!,
-        penaltyAmount: log.args.penaltyAmount!,
-        blockNumber: log.blockNumber,
-        transactionHash: log.transactionHash,
+        slaId: log.args.slaId!, provider: log.args.provider!,
+        uptimeBps: log.args.uptimeBps!, penaltyAmount: log.args.penaltyAmount!,
+        blockNumber: log.blockNumber, transactionHash: log.transactionHash,
       })));
     };
     fetchEvents();
   }, [publicClient]);
 
-  // Real-time BreachWarning events — deduplicated by blockNumber to prevent double-adds
   useWatchContractEvent({
-    address: SLA_CONTRACT_ADDRESS,
-    abi: SLA_ABI,
-    eventName: "BreachWarning",
+    address: SLA_CONTRACT_ADDRESS, abi: SLA_ABI, eventName: "BreachWarning",
     onLogs(logs) {
       const newWarnings = (logs as unknown as { args: { slaId: bigint; riskScore: bigint; prediction: string }; blockNumber: bigint }[])
         .map(log => ({ slaId: log.args.slaId, riskScore: log.args.riskScore, prediction: log.args.prediction, blockNumber: log.blockNumber }));
@@ -181,15 +174,11 @@ export default function Dashboard() {
         return fresh.length ? [...prev, ...fresh] : prev;
       });
     },
-    poll: true,
-    pollingInterval: 5_000,
+    poll: true, pollingInterval: 5_000,
   });
 
-  // Real-time SLABreached events — deduplicated by transactionHash
   useWatchContractEvent({
-    address: SLA_CONTRACT_ADDRESS,
-    abi: SLA_ABI,
-    eventName: "SLABreached",
+    address: SLA_CONTRACT_ADDRESS, abi: SLA_ABI, eventName: "SLABreached",
     onLogs(logs) {
       const newBreaches = (logs as unknown as { args: { slaId: bigint; provider: string; uptimeBps: bigint; penaltyAmount: bigint }; blockNumber: bigint; transactionHash: string }[])
         .map(log => ({ slaId: log.args.slaId, provider: log.args.provider, uptimeBps: log.args.uptimeBps, penaltyAmount: log.args.penaltyAmount, blockNumber: log.blockNumber, transactionHash: log.transactionHash }));
@@ -199,104 +188,115 @@ export default function Dashboard() {
         return fresh.length ? [...fresh, ...prev] : prev;
       });
     },
-    poll: true,
-    pollingInterval: 5_000,
+    poll: true, pollingInterval: 5_000,
   });
 
-  // Computed stats
   const activeSLAs = slas.filter(s => s.active).length;
   const totalBonded = slas.reduce((sum, s) => sum + Number(formatEther(s.bondAmount)), 0);
   const breachCountNum = Number(breachCount ?? 0);
 
-  // Build risk score map — always overwrite so last write wins (getLogs returns ascending block order)
   const latestRiskScores = new Map<number, number>();
   for (const w of breachWarnings) {
     latestRiskScores.set(Number(w.slaId), Number(w.riskScore));
   }
 
   return (
-    <div className="space-y-8">
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={stagger}
+      className="space-y-8"
+    >
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-white">SLA Dashboard</h1>
-        <p className="text-gray-400 mt-1">Real-time compliance monitoring for tokenized RWA service agreements</p>
-      </div>
+      <motion.div variants={fadeUp}>
+        <h1 className="text-2xl md:text-3xl font-semibold text-white tracking-tight">Dashboard</h1>
+        <p className="text-[14px] mt-1" style={{ color: "var(--muted)" }}>
+          Real-time compliance monitoring for tokenized RWA service agreements
+        </p>
+      </motion.div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard label="Active SLAs" value={`${activeSLAs}`} subtitle="agreements enforced" color="#5493F7" />
-        <StatCard label="Total Bonded" value={`${totalBonded.toFixed(2)} ETH`} subtitle="locked as collateral" color="#22c55e" />
-        <StatCard label="Warnings" value={`${breachWarnings.length}`} subtitle="AI predictions" color="#f59e0b" />
-        <StatCard label="Breaches" value={`${breachCountNum}`} subtitle="penalties executed" color={breachCountNum > 0 ? '#ef4444' : '#22c55e'} />
-      </div>
+      <motion.div variants={stagger} className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <StatCard label="Active SLAs" value={`${activeSLAs}`} subtitle="agreements enforced" />
+        <StatCard label="Total Bonded" value={`${totalBonded.toFixed(2)} ETH`} subtitle="locked as collateral" />
+        <StatCard label="Warnings" value={`${breachWarnings.length}`} subtitle="AI predictions" />
+        <StatCard label="Breaches" value={`${breachCountNum}`} subtitle="penalties executed" />
+      </motion.div>
 
       {/* Breach Warnings */}
       {breachWarnings.length > 0 && (
-        <div>
-          <h2 className="text-xl font-semibold text-white mb-4">AI Breach Predictions</h2>
+        <motion.div variants={fadeUp}>
+          <h2 className="text-[15px] font-semibold text-white mb-3">AI Breach Predictions</h2>
           <div className="space-y-2">
             {breachWarnings.slice(0, 10).map((w, i) => (
               <motion.div
                 key={`${w.slaId}-${w.blockNumber}-${i}`}
-                initial={{ opacity: 0, x: -10 }}
+                initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="rounded-lg p-4 border flex items-center justify-between"
-                style={{ background: 'var(--card)', borderColor: Number(w.riskScore) > 70 ? '#ef444440' : 'var(--card-border)' }}
+                transition={{ delay: i * 0.04 }}
+                className="glass-card rounded-xl p-4 flex items-center justify-between"
+                style={{
+                  borderColor: Number(w.riskScore) > 70 ? "rgba(239,68,68,0.15)" : undefined,
+                }}
               >
                 <div>
-                  <span className="font-mono text-sm text-gray-400">SLA #{Number(w.slaId)}</span>
-                  <p className="text-white text-sm mt-1">{w.prediction}</p>
+                  <span className="font-mono text-[12px]" style={{ color: "var(--muted)" }}>SLA #{Number(w.slaId)}</span>
+                  <p className="text-white text-[13px] mt-0.5">{w.prediction}</p>
                 </div>
                 <RiskBadge score={Number(w.riskScore)} />
               </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* SLA Cards */}
-      <div>
-        <h2 className="text-xl font-semibold text-white mb-4">Active Agreements</h2>
+      <motion.div variants={fadeUp}>
+        <h2 className="text-[15px] font-semibold text-white mb-3">Active Agreements</h2>
         {slas.length === 0 ? (
-          <div className="rounded-xl p-8 border text-center" style={{ background: 'var(--card)', borderColor: 'var(--card-border)' }}>
-            <p className="text-gray-400">No SLAs found. Connect to a deployed contract to see live data.</p>
+          <div className="glass-card rounded-2xl p-10 text-center">
+            <p style={{ color: "var(--muted)" }}>No SLAs found. Connect to a deployed contract to see live data.</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {slas.map((sla, i) => {
               const riskScore = latestRiskScores.get(sla.id);
               return (
                 <motion.div
                   key={sla.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="rounded-xl p-6 border"
-                  style={{ background: 'var(--card)', borderColor: 'var(--card-border)' }}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.06, duration: 0.4, ease: [0.22, 1, 0.36, 1] as const }}
+                  className="glass-card glass-card-glow rounded-2xl p-5 md:p-6"
                 >
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start justify-between mb-3">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-mono text-gray-400">SLA #{sla.id}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${sla.active ? 'text-green-400 bg-green-400/10' : 'text-red-400 bg-red-400/10'}`}>
-                          {sla.active ? 'Active' : 'Inactive'}
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-[12px] font-mono" style={{ color: "var(--muted)" }}>SLA #{sla.id}</span>
+                        <span
+                          className="px-2 py-0.5 rounded-md text-[11px] font-medium"
+                          style={{
+                            color: sla.active ? "rgba(74,222,128,0.8)" : "rgba(239,68,68,0.8)",
+                            background: sla.active ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)",
+                          }}
+                        >
+                          {sla.active ? "Active" : "Inactive"}
                         </span>
                         {riskScore !== undefined && <RiskBadge score={riskScore} />}
                       </div>
-                      <p className="text-white font-medium mt-1">
-                        Provider: <span className="font-mono text-sm text-gray-300">{sla.provider.slice(0, 10)}...</span>
+                      <p className="text-white text-[14px] font-medium mt-1.5">
+                        Provider: <span className="font-mono text-[13px]" style={{ color: "var(--muted-strong)" }}>{sla.provider.slice(0, 10)}...</span>
                       </p>
-                      <p className="text-gray-400 text-sm">
+                      <p className="text-[12px] mt-0.5" style={{ color: "var(--muted)" }}>
                         Min uptime: {Number(sla.minUptimeBps) / 100}% &middot; Response: {Number(sla.responseTimeHrs)}h &middot; Penalty: {Number(sla.penaltyBps) / 100}%
                       </p>
                     </div>
-                    <a
+                    <Link
                       href={`/sla/${sla.id}`}
-                      className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors"
-                      style={{ background: 'var(--chainlink-blue)' }}
+                      className="btn-primary px-4 py-2 text-[13px]"
                     >
-                      View Details
-                    </a>
+                      View
+                    </Link>
                   </div>
                   <BondHealthBar bond={Number(formatEther(sla.bondAmount))} max={3} />
                 </motion.div>
@@ -304,40 +304,43 @@ export default function Dashboard() {
             })}
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* Recent Breaches */}
       {breachEvents.length > 0 && (
-        <div>
-          <h2 className="text-xl font-semibold text-white mb-4">Recent Breaches</h2>
-          <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--card-border)' }}>
-            <table className="w-full text-sm">
-              <thead style={{ background: 'var(--card)' }}>
-                <tr className="text-gray-400 text-left">
-                  <th className="px-4 py-3">SLA</th>
-                  <th className="px-4 py-3">Provider</th>
-                  <th className="px-4 py-3">Uptime</th>
-                  <th className="px-4 py-3">Penalty</th>
-                  <th className="px-4 py-3">Block</th>
-                  <th className="px-4 py-3">Tx</th>
+        <motion.div variants={fadeUp}>
+          <h2 className="text-[15px] font-semibold text-white mb-3">Recent Breaches</h2>
+          <div className="glass-card rounded-2xl overflow-hidden">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--card-border)" }}>
+                  {["SLA", "Provider", "Uptime", "Penalty", "Block", "Tx"].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left font-medium" style={{ color: "var(--muted)" }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {breachEvents.slice(0, 20).map((breach, i) => (
-                  <tr key={`${breach.transactionHash}-${i}`} className="border-t" style={{ borderColor: 'var(--card-border)', background: i % 2 === 0 ? '#0d0d1a' : 'var(--card)' }}>
+                  <tr
+                    key={`${breach.transactionHash}-${i}`}
+                    style={{
+                      borderBottom: i < 19 ? "1px solid var(--card-border)" : "none",
+                      background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
+                    }}
+                  >
                     <td className="px-4 py-3 text-white font-mono">#{Number(breach.slaId)}</td>
-                    <td className="px-4 py-3 text-gray-300 font-mono">{breach.provider.slice(0, 10)}...</td>
-                    <td className="px-4 py-3 text-red-400">{Number(breach.uptimeBps) / 100}%</td>
-                    <td className="px-4 py-3 text-orange-400">{formatEther(breach.penaltyAmount)} ETH</td>
-                    <td className="px-4 py-3 text-gray-400">{Number(breach.blockNumber)}</td>
-                    <td className="px-4 py-3 font-mono text-blue-400">{breach.transactionHash.slice(0, 10)}...</td>
+                    <td className="px-4 py-3 font-mono" style={{ color: "var(--muted-strong)" }}>{breach.provider.slice(0, 10)}...</td>
+                    <td className="px-4 py-3 text-white">{Number(breach.uptimeBps) / 100}%</td>
+                    <td className="px-4 py-3 text-white">{formatEther(breach.penaltyAmount)} ETH</td>
+                    <td className="px-4 py-3" style={{ color: "var(--muted)" }}>{Number(breach.blockNumber)}</td>
+                    <td className="px-4 py-3 font-mono" style={{ color: "var(--chainlink-light)" }}>{breach.transactionHash.slice(0, 10)}...</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }

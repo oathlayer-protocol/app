@@ -1,6 +1,16 @@
-import { getDefaultConfig } from "@rainbow-me/rainbowkit";
-import { sepolia } from "wagmi/chains";
+import { connectorsForWallets } from "@rainbow-me/rainbowkit";
+import {
+  rabbyWallet,
+  metaMaskWallet,
+  walletConnectWallet,
+  injectedWallet,
+} from "@rainbow-me/rainbowkit/wallets";
+import { createConfig, http } from "wagmi";
 import { defineChain } from "viem";
+
+const TENDERLY_RPC =
+  process.env.NEXT_PUBLIC_RPC_URL ||
+  "https://virtual.sepolia.eu.rpc.tenderly.co/47ad454d-8109-4ccb-9285-7ab201835e5d";
 
 // Tenderly Virtual Sepolia VNet
 export const tenderlyVNet = defineChain({
@@ -9,10 +19,7 @@ export const tenderlyVNet = defineChain({
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: {
     default: {
-      http: [
-        process.env.NEXT_PUBLIC_RPC_URL ||
-          "https://virtual.sepolia.eu.rpc.tenderly.co/47ad454d-8109-4ccb-9285-7ab201835e5d",
-      ],
+      http: [TENDERLY_RPC],
     },
   },
   blockExplorers: {
@@ -26,9 +33,27 @@ export const tenderlyVNet = defineChain({
   testnet: true,
 });
 
-export const config = getDefaultConfig({
-  appName: "OathLayer",
-  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "oathlayer-hackathon",
-  chains: [tenderlyVNet, sepolia],
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "oathlayer-hackathon";
+
+const connectors = connectorsForWallets(
+  [
+    {
+      groupName: "Recommended",
+      wallets: [rabbyWallet, metaMaskWallet, injectedWallet],
+    },
+    {
+      groupName: "Other",
+      wallets: [walletConnectWallet],
+    },
+  ],
+  { appName: "OathLayer", projectId }
+);
+
+export const config = createConfig({
+  connectors,
+  chains: [tenderlyVNet],
+  transports: {
+    [tenderlyVNet.id]: http(TENDERLY_RPC),
+  },
   ssr: true,
 });

@@ -6,6 +6,15 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadCont
 import { parseEther, type Address } from "viem";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { SLA_CONTRACT_ADDRESS, SLA_ABI } from "@/lib/contract";
+import Link from "next/link";
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  visible: (i: number) => ({
+    opacity: 1, y: 0,
+    transition: { delay: i * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] as const },
+  }),
+};
 
 export default function CreateSLA() {
   const { address, isConnected } = useAccount();
@@ -17,7 +26,6 @@ export default function CreateSLA() {
     bondEth: 1.0,
   });
 
-  // Check if connected wallet is a verified provider
   const { data: isVerified } = useReadContract({
     address: SLA_CONTRACT_ADDRESS,
     abi: SLA_ABI,
@@ -39,8 +47,8 @@ export default function CreateSLA() {
       args: [
         form.tenantAddress as Address,
         BigInt(form.responseTimeHrs),
-        BigInt(Math.round(form.minUptime * 100)), // bps
-        BigInt(Math.round(form.penaltyPct * 100)), // bps
+        BigInt(Math.round(form.minUptime * 100)),
+        BigInt(Math.round(form.penaltyPct * 100)),
       ],
       value: parseEther(form.bondEth.toString()),
     });
@@ -52,139 +60,104 @@ export default function CreateSLA() {
 
   return (
     <div className="max-w-xl mx-auto">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-3xl font-bold text-white mb-2">Create SLA Agreement</h1>
-        <p className="text-gray-400 mb-8">Define terms and bond collateral. CRE will automatically enforce violations.</p>
+      <motion.div initial="hidden" animate="visible">
+        <motion.div custom={0} variants={fadeUp}>
+          <h1 className="text-2xl md:text-3xl font-semibold text-white tracking-tight mb-1">Create SLA Agreement</h1>
+          <p className="text-[14px] mb-8" style={{ color: "var(--muted)" }}>
+            Define terms and bond collateral. CRE will automatically enforce violations.
+          </p>
+        </motion.div>
 
         {!isConnected && (
-          <div className="rounded-xl p-6 border mb-6 flex flex-col items-center gap-4"
-               style={{ background: 'var(--card)', borderColor: 'var(--card-border)' }}>
-            <p className="text-gray-400 text-sm">Connect your wallet to create an SLA</p>
+          <motion.div custom={1} variants={fadeUp} className="glass-card rounded-2xl p-6 mb-6 flex flex-col items-center gap-4">
+            <p className="text-[13px]" style={{ color: "var(--muted)" }}>Connect your wallet to create an SLA</p>
             <ConnectButton />
-          </div>
+          </motion.div>
         )}
 
         {isConnected && isVerified === false && (
-          <div className="rounded-xl p-4 border mb-6 border-yellow-400/20 bg-yellow-400/5">
-            <p className="text-yellow-400 text-sm">
+          <motion.div custom={1} variants={fadeUp} className="glass-card rounded-2xl p-4 mb-6" style={{ borderColor: "rgba(245,158,11,0.15)" }}>
+            <p className="text-[13px]" style={{ color: "var(--muted-strong)" }}>
               You must be a registered provider to create SLAs.{" "}
-              <a href="/provider/register" className="underline">Register here</a>.
+              <Link href="/provider/register" className="underline" style={{ color: "var(--chainlink-light)" }}>Register here</Link>.
             </p>
-          </div>
+          </motion.div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className={`rounded-xl p-6 border space-y-4 transition-opacity ${!isConnected || !isVerified ? 'opacity-50 pointer-events-none' : ''}`}
-               style={{ background: 'var(--card)', borderColor: 'var(--card-border)' }}>
+          <motion.div
+            custom={2}
+            variants={fadeUp}
+            className={`glass-card glass-card-glow rounded-2xl p-6 space-y-4 transition-opacity ${!isConnected || !isVerified ? "opacity-40 pointer-events-none" : ""}`}
+          >
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Tenant Address</label>
+              <label className="block text-[13px] mb-1.5" style={{ color: "var(--muted)" }}>Tenant Address</label>
               <input
                 type="text"
                 placeholder="0x..."
                 value={form.tenantAddress}
                 onChange={e => setForm({ ...form, tenantAddress: e.target.value as Address })}
-                className="w-full px-4 py-2 rounded-lg border text-white bg-transparent focus:outline-none font-mono text-sm"
-                style={{ borderColor: 'var(--card-border)' }}
+                className="w-full px-4 py-2.5 rounded-lg text-white font-mono text-[13px]"
                 required
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Response Time (hours)</label>
-                <input
-                  type="number"
-                  value={form.responseTimeHrs}
-                  onChange={e => setForm({ ...form, responseTimeHrs: parseInt(e.target.value) })}
-                  className="w-full px-4 py-2 rounded-lg border text-white bg-transparent focus:outline-none"
-                  style={{ borderColor: 'var(--card-border)' }}
-                  min="1" max="168"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Bond Amount (ETH)</label>
-                <input
-                  type="number"
-                  value={form.bondEth}
-                  onChange={e => setForm({ ...form, bondEth: parseFloat(e.target.value) })}
-                  className="w-full px-4 py-2 rounded-lg border text-white bg-transparent focus:outline-none"
-                  style={{ borderColor: 'var(--card-border)' }}
-                  min="0.1" step="0.1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Min Uptime (%)</label>
-                <input
-                  type="number"
-                  value={form.minUptime}
-                  onChange={e => setForm({ ...form, minUptime: parseFloat(e.target.value) })}
-                  className="w-full px-4 py-2 rounded-lg border text-white bg-transparent focus:outline-none"
-                  style={{ borderColor: 'var(--card-border)' }}
-                  min="90" max="100" step="0.1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Penalty per Breach (%)</label>
-                <input
-                  type="number"
-                  value={form.penaltyPct}
-                  onChange={e => setForm({ ...form, penaltyPct: parseFloat(e.target.value) })}
-                  className="w-full px-4 py-2 rounded-lg border text-white bg-transparent focus:outline-none"
-                  style={{ borderColor: 'var(--card-border)' }}
-                  min="1" max="100" step="0.5"
-                />
-              </div>
+              {[
+                { label: "Response Time (hours)", value: form.responseTimeHrs, key: "responseTimeHrs", min: 1, max: 168, step: 1 },
+                { label: "Bond Amount (ETH)", value: form.bondEth, key: "bondEth", min: 0.1, step: 0.1 },
+                { label: "Min Uptime (%)", value: form.minUptime, key: "minUptime", min: 90, max: 100, step: 0.1 },
+                { label: "Penalty per Breach (%)", value: form.penaltyPct, key: "penaltyPct", min: 1, max: 100, step: 0.5 },
+              ].map(({ label, value, key, ...rest }) => (
+                <div key={key}>
+                  <label className="block text-[13px] mb-1.5" style={{ color: "var(--muted)" }}>{label}</label>
+                  <input
+                    type="number"
+                    value={value}
+                    onChange={e => setForm({ ...form, [key]: parseFloat(e.target.value) })}
+                    className="w-full px-4 py-2.5 rounded-lg text-white text-[14px]"
+                    {...rest}
+                  />
+                </div>
+              ))}
             </div>
 
             {/* Summary */}
-            <div className="p-4 rounded-lg text-sm space-y-1" style={{ background: '#0d0d1a' }}>
-              <p className="text-gray-400 font-medium mb-2">Agreement Summary</p>
-              <p className="text-gray-300">Uptime threshold: <span className="text-white">{minUptimeBps} bps ({form.minUptime}%)</span></p>
-              <p className="text-gray-300">Penalty on breach: <span className="text-orange-400">{penaltyBps} bps ({form.penaltyPct}% of bond)</span></p>
-              <p className="text-gray-300">Collateral at risk: <span className="text-red-400">{(form.bondEth * form.penaltyPct / 100).toFixed(3)} ETH per breach</span></p>
+            <div className="p-4 rounded-xl text-[13px] space-y-1.5" style={{ background: "rgba(255,255,255,0.02)" }}>
+              <p className="font-medium mb-2 text-white text-[12px] uppercase tracking-wider">Agreement Summary</p>
+              <p style={{ color: "var(--muted-strong)" }}>Uptime threshold: <span className="text-white">{minUptimeBps} bps ({form.minUptime}%)</span></p>
+              <p style={{ color: "var(--muted-strong)" }}>Penalty on breach: <span className="text-white">{penaltyBps} bps ({form.penaltyPct}% of bond)</span></p>
+              <p style={{ color: "var(--muted-strong)" }}>Collateral at risk: <span className="text-white">{(form.bondEth * form.penaltyPct / 100).toFixed(3)} ETH per breach</span></p>
             </div>
-          </div>
+          </motion.div>
 
-          <button
-            type="submit"
-            disabled={!isConnected || !isVerified || isLoading}
-            className="w-full py-3 rounded-lg font-medium text-white disabled:opacity-50 transition-opacity hover:opacity-90"
-            style={{ background: 'var(--chainlink-blue)' }}
-          >
-            {isLoading ? "Creating SLA..." : isSuccess ? "✓ SLA Created!" : "Create SLA & Bond Collateral"}
-          </button>
+          <motion.div custom={3} variants={fadeUp}>
+            <button
+              type="submit"
+              disabled={!isConnected || !isVerified || isLoading}
+              className="btn-primary w-full py-3 text-[14px]"
+            >
+              {isLoading ? "Creating SLA..." : isSuccess ? "✓ SLA Created!" : "Create SLA & Bond Collateral"}
+            </button>
+          </motion.div>
 
           {txHash && !isSuccess && (
-            <p className="text-xs text-gray-400 text-center font-mono">
+            <p className="text-[12px] text-center font-mono" style={{ color: "var(--muted)" }}>
               Tx: {txHash.slice(0, 20)}... confirming...
             </p>
           )}
 
           {isSuccess && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-4 rounded-lg text-green-400 border border-green-400/20 bg-green-400/5"
-            >
-              <p className="font-medium">SLA created on-chain!</p>
-              <p className="text-xs mt-1">Chainlink CRE will now monitor compliance automatically.</p>
-              <p className="text-xs mt-1 font-mono text-gray-400">
-                Tx:{" "}
-                <a
-                  href={`${process.env.NEXT_PUBLIC_TENDERLY_EXPLORER}/tx/${txHash}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline"
-                >
-                  {txHash?.slice(0, 20)}...
-                </a>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-xl p-4" style={{ borderColor: "rgba(74,222,128,0.15)" }}>
+              <p className="font-medium text-white text-[14px]">SLA created on-chain!</p>
+              <p className="text-[12px] mt-1" style={{ color: "var(--muted)" }}>Chainlink CRE will now monitor compliance automatically.</p>
+              <p className="text-[12px] mt-1 font-mono" style={{ color: "var(--muted)" }}>
+                Tx: <a href={`${process.env.NEXT_PUBLIC_TENDERLY_EXPLORER}/tx/${txHash}`} target="_blank" rel="noreferrer" className="underline">{txHash?.slice(0, 20)}...</a>
               </p>
             </motion.div>
           )}
 
-          {error && (
-            <p className="text-red-400 text-sm">{error.message.split("\n")[0]}</p>
-          )}
+          {error && <p className="text-red-400 text-[13px]">{error.message.split("\n")[0]}</p>}
         </form>
       </motion.div>
     </div>

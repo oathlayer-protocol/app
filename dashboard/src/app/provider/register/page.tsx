@@ -9,8 +9,15 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { SLA_CONTRACT_ADDRESS, SLA_ABI } from "@/lib/contract";
 import { decodeProof } from "@/lib/proof";
 
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  visible: (i: number) => ({
+    opacity: 1, y: 0,
+    transition: { delay: i * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] as const },
+  }),
+};
+
 function ComplianceStatusBadge({ address, txHash }: { address: string; txHash: string }) {
-  // Poll providerCompliance every 5s until it changes from NONE (0)
   const { data: complianceStatus } = useReadContract({
     address: SLA_CONTRACT_ADDRESS,
     abi: SLA_ABI,
@@ -20,41 +27,34 @@ function ComplianceStatusBadge({ address, txHash }: { address: string; txHash: s
   });
 
   const status = Number(complianceStatus ?? 0);
-  // 0 = NONE, 1 = APPROVED, 2 = REJECTED
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mt-4 p-4 rounded-lg border"
+      className="glass-card rounded-xl mt-4 p-4"
       style={{
-        borderColor: status === 1 ? '#22c55e40' : status === 2 ? '#ef444440' : 'var(--card-border)',
-        background: status === 1 ? '#22c55e08' : status === 2 ? '#ef444408' : 'var(--card)',
+        borderColor: status === 1 ? "rgba(74,222,128,0.15)" : status === 2 ? "rgba(239,68,68,0.15)" : undefined,
       }}
     >
-      <p className="text-xs mt-1 font-mono text-gray-400 mb-2">
+      <p className="text-[12px] font-mono mb-2" style={{ color: "var(--muted)" }}>
         Tx:{" "}
-        <a
-          href={`${process.env.NEXT_PUBLIC_TENDERLY_EXPLORER}/tx/${txHash}`}
-          target="_blank"
-          rel="noreferrer"
-          className="underline"
-        >
+        <a href={`${process.env.NEXT_PUBLIC_TENDERLY_EXPLORER}/tx/${txHash}`} target="_blank" rel="noreferrer" className="underline">
           {txHash.slice(0, 20)}...
         </a>
       </p>
       {status === 0 && (
-        <div className="flex items-center gap-2 text-yellow-400">
-          <span className="animate-spin inline-block w-4 h-4 border-2 border-yellow-400 border-t-transparent rounded-full" />
-          <span className="text-sm">Compliance check in progress...</span>
+        <div className="flex items-center gap-2" style={{ color: "var(--muted-strong)" }}>
+          <span className="animate-spin inline-block w-4 h-4 border-2 border-t-transparent rounded-full" style={{ borderColor: "var(--chainlink-light)", borderTopColor: "transparent" }} />
+          <span className="text-[13px]">Compliance check in progress...</span>
         </div>
       )}
       {status === 1 && (
-        <div className="flex items-center gap-2 text-green-400">
-          <span className="text-lg">&#10003;</span>
+        <div className="flex items-center gap-2">
+          <span className="text-lg" style={{ color: "rgba(74,222,128,0.8)" }}>&#10003;</span>
           <div>
-            <p className="font-medium">Provider registered &amp; compliance APPROVED</p>
-            <p className="text-xs text-gray-400">You can now create SLAs</p>
+            <p className="font-medium text-white text-[14px]">Provider registered & compliance approved</p>
+            <p className="text-[12px]" style={{ color: "var(--muted)" }}>You can now create SLAs</p>
           </div>
         </div>
       )}
@@ -62,8 +62,8 @@ function ComplianceStatusBadge({ address, txHash }: { address: string; txHash: s
         <div className="flex items-center gap-2 text-red-400">
           <span className="text-lg">&#10007;</span>
           <div>
-            <p className="font-medium">Compliance REJECTED</p>
-            <p className="text-xs text-gray-400">This address has been permanently blocked from creating SLAs</p>
+            <p className="font-medium text-[14px]">Compliance rejected</p>
+            <p className="text-[12px]" style={{ color: "var(--muted)" }}>This address has been permanently blocked</p>
           </div>
         </div>
       )}
@@ -95,11 +95,7 @@ export default function RegisterProvider() {
       address: SLA_CONTRACT_ADDRESS,
       abi: SLA_ABI,
       functionName: "registerProvider",
-      args: [
-        BigInt(proof.merkle_root),
-        BigInt(proof.nullifier_hash),
-        decodeProof(proof.proof),
-      ],
+      args: [BigInt(proof.merkle_root), BigInt(proof.nullifier_hash), decodeProof(proof.proof)],
       value: parseEther(bondAmount),
     });
   };
@@ -108,39 +104,45 @@ export default function RegisterProvider() {
 
   return (
     <div className="max-w-xl mx-auto">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-3xl font-bold text-white mb-2">Register as Provider</h1>
-        <p className="text-gray-400 mb-8">
-          Verify your identity with World ID to become an SLA provider. Bond ETH as collateral.
-        </p>
+      <motion.div initial="hidden" animate="visible">
+        <motion.div custom={0} variants={fadeUp}>
+          <h1 className="text-2xl md:text-3xl font-semibold text-white tracking-tight mb-1">Register as Provider</h1>
+          <p className="text-[14px] mb-8" style={{ color: "var(--muted)" }}>
+            Verify your identity with World ID to become an SLA provider. Bond ETH as collateral.
+          </p>
+        </motion.div>
 
         {!isConnected && (
-          <div className="rounded-xl p-6 border mb-4 flex flex-col items-center gap-4"
-               style={{ background: 'var(--card)', borderColor: 'var(--card-border)' }}>
-            <p className="text-gray-400 text-sm">Connect your wallet to register</p>
+          <motion.div custom={1} variants={fadeUp} className="glass-card rounded-2xl p-6 mb-4 flex flex-col items-center gap-4">
+            <p className="text-[13px]" style={{ color: "var(--muted)" }}>Connect your wallet to register</p>
             <ConnectButton />
-          </div>
+          </motion.div>
         )}
 
         {/* Step 1: World ID */}
-        <div className={`rounded-xl p-6 border mb-4 transition-opacity ${!isConnected ? 'opacity-40 pointer-events-none' : ''}`}
-             style={{ background: 'var(--card)', borderColor: 'var(--card-border)' }}>
+        <motion.div
+          custom={1}
+          variants={fadeUp}
+          className={`glass-card glass-card-glow rounded-2xl p-6 mb-3 transition-opacity ${!isConnected ? "opacity-40 pointer-events-none" : ""}`}
+        >
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white"
-                 style={{ background: proof ? '#22c55e' : 'var(--chainlink-blue)' }}>
-              {proof ? '✓' : '1'}
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-[13px] font-semibold text-white"
+              style={{ background: proof ? "rgba(74,222,128,0.15)" : "rgba(55,91,210,0.2)" }}
+            >
+              {proof ? "✓" : "1"}
             </div>
             <div>
-              <p className="font-medium text-white">Verify Identity</p>
-              <p className="text-xs text-gray-400">Orb-level verification prevents Sybil attacks</p>
+              <p className="font-medium text-white text-[14px]">Verify Identity</p>
+              <p className="text-[12px]" style={{ color: "var(--muted)" }}>World ID prevents Sybil attacks</p>
             </div>
           </div>
 
           {proof ? (
-            <div className="flex items-center gap-2 text-green-400">
+            <div className="flex items-center gap-2" style={{ color: "rgba(74,222,128,0.8)" }}>
               <span>✓</span>
-              <span className="text-sm">World ID verified</span>
-              <span className="font-mono text-xs text-gray-500 ml-2">{proof.nullifier_hash.slice(0, 14)}...</span>
+              <span className="text-[13px]">World ID verified</span>
+              <span className="font-mono text-[11px] ml-2" style={{ color: "var(--muted)" }}>{proof.nullifier_hash.slice(0, 14)}...</span>
             </div>
           ) : (
             <IDKitWidget
@@ -152,32 +154,32 @@ export default function RegisterProvider() {
               onSuccess={() => {}}
             >
               {({ open }: { open: () => void }) => (
-                <button
-                  onClick={open}
-                  className="w-full py-3 rounded-lg font-medium text-white transition-opacity hover:opacity-90"
-                  style={{ background: 'var(--chainlink-blue)' }}
-                >
+                <button onClick={open} className="btn-primary w-full py-3 text-[14px]">
                   Verify with World ID
                 </button>
               )}
             </IDKitWidget>
           )}
-        </div>
+        </motion.div>
 
-        {/* Step 2: Bond amount */}
-        <div className={`rounded-xl p-6 border mb-4 transition-opacity ${!proof ? 'opacity-50' : ''}`}
-             style={{ background: 'var(--card)', borderColor: 'var(--card-border)' }}>
+        {/* Step 2: Bond */}
+        <motion.div
+          custom={2}
+          variants={fadeUp}
+          className={`glass-card glass-card-glow rounded-2xl p-6 mb-4 transition-opacity ${!proof ? "opacity-40" : ""}`}
+        >
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white"
-                 style={{ background: 'var(--chainlink-blue)' }}>
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-[13px] font-semibold text-white"
+              style={{ background: "rgba(55,91,210,0.2)" }}
+            >
               2
             </div>
             <div>
-              <p className="font-medium text-white">Bond Collateral</p>
-              <p className="text-xs text-gray-400">Minimum 0.1 ETH — slashed on SLA violations</p>
+              <p className="font-medium text-white text-[14px]">Bond Collateral</p>
+              <p className="text-[12px]" style={{ color: "var(--muted)" }}>Minimum 0.1 ETH — slashed on violations</p>
             </div>
           </div>
-
           <div className="flex gap-3">
             <input
               type="number"
@@ -186,25 +188,25 @@ export default function RegisterProvider() {
               min="0.1"
               step="0.1"
               disabled={!proof}
-              className="flex-1 px-4 py-2 rounded-lg border text-white bg-transparent focus:outline-none"
-              style={{ borderColor: 'var(--card-border)' }}
+              className="flex-1 px-4 py-2.5 rounded-lg text-white text-[14px]"
             />
-            <span className="flex items-center text-gray-400">ETH</span>
+            <span className="flex items-center text-[13px]" style={{ color: "var(--muted)" }}>ETH</span>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Register Button */}
-        <button
-          onClick={handleRegister}
-          disabled={!proof || !isConnected || isLoading}
-          className="w-full py-3 rounded-lg font-medium text-white disabled:opacity-50 transition-opacity hover:opacity-90"
-          style={{ background: 'var(--chainlink-blue)' }}
-        >
-          {isLoading ? "Registering..." : isSuccess ? "✓ Registered!" : "Register as Provider"}
-        </button>
+        {/* Register */}
+        <motion.div custom={3} variants={fadeUp}>
+          <button
+            onClick={handleRegister}
+            disabled={!proof || !isConnected || isLoading}
+            className="btn-primary w-full py-3 text-[14px]"
+          >
+            {isLoading ? "Registering..." : isSuccess ? "✓ Registered!" : "Register as Provider"}
+          </button>
+        </motion.div>
 
         {txHash && !isSuccess && (
-          <p className="mt-3 text-xs text-gray-400 text-center font-mono">
+          <p className="mt-3 text-[12px] text-center font-mono" style={{ color: "var(--muted)" }}>
             Tx: {txHash.slice(0, 20)}... confirming...
           </p>
         )}
@@ -212,7 +214,7 @@ export default function RegisterProvider() {
         {isSuccess && <ComplianceStatusBadge address={address!} txHash={txHash!} />}
 
         {error && (
-          <p className="mt-3 text-red-400 text-sm">
+          <p className="mt-3 text-red-400 text-[13px]">
             {error.message.includes("revert") ? "Contract reverted — already registered?" : error.message}
           </p>
         )}
@@ -220,4 +222,3 @@ export default function RegisterProvider() {
     </div>
   );
 }
-
