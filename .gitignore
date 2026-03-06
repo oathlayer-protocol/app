@@ -7,3 +7,4 @@ out/
 cache/
 broadcast/
 signing-key-*.json
+.serena/

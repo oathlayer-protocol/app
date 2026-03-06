@@ -1,8 +1,10 @@
 # OathLayer
 
-Privacy-first, AI-powered SLA enforcement for tokenized real-world assets. Chainlink CRE automates compliance monitoring, Gemini Flash predicts breaches before they happen, and World ID ensures only verified humans participate.
+**Autonomous SLA Enforcement for Tokenized Real-World Assets**
 
-**Hackathon:** CONVERGENCE (Chainlink) — Deadline: March 8, 2026
+Chainlink CRE monitors uptime, Gemini Flash predicts breaches before they happen, and penalties execute on-chain — all without human intervention. Provider identity gated by World ID.
+
+**Hackathon:** CONVERGENCE (Chainlink) — Deadline: March 27, 2026
 **Tracks:** Risk & Compliance ($16K) · Privacy ($16K) · CRE & AI ($17K)
 **Bounties:** World ID + CRE ($5K) · World Mini App + CRE ($5K) · Tenderly VirtualTestNets ($5K)
 
@@ -26,15 +28,17 @@ World Chain (4801)          CRE Workflows              Sepolia (Tenderly VNet)
 │                  │   │ 4. ArbitratorReg    │   │                  │
 └──────────────────┘   └─────────────────────┘   └──────────────────┘
 
-Dashboard (Next.js)          Mock APIs (:3001)
-┌──────────────────┐   ┌─────────────────────┐
-│ / — live SLAs    │   │ /provider/:addr/    │
-│   (multicall),   │   │   uptime            │
-│   breach alerts  │   │ /compliance/:addr   │
-│   (getLogs),     │   │   → mock KYC check  │
-│   risk scores    │   │                     │
-│ /provider/reg    │   │                     │
-└──────────────────┘   └─────────────────────┘
+Dashboard (Next.js)          Mini App (World App)      Mock APIs (:3001)
+┌──────────────────┐   ┌─────────────────────┐   ┌─────────────────┐
+│ / — landing      │   │ Provider registration│   │ /provider/:addr │
+│ /dashboard —     │   │ via World ID MiniKit │   │   /uptime       │
+│   live SLAs,     │   │ File claims against  │   │ /compliance/    │
+│   breach alerts, │   │   SLA providers      │   │   :addr         │
+│   risk scores    │   │                     │   │                 │
+│ /sla/create      │   │ Runs inside World   │   │                 │
+│ /claims          │   │ App mobile browser   │   │                 │
+│ /arbitrate       │   │                     │   │                 │
+└──────────────────┘   └─────────────────────┘   └─────────────────┘
 ```
 
 ## How Chainlink CRE is Used (5 Capabilities)
@@ -57,15 +61,26 @@ Dashboard (Next.js)          Mock APIs (:3001)
 
 ## How World ID is Used
 
-- **Provider registration** — Orb-level verification prevents Sybil SLA providers
+- **Provider registration** — World ID verification prevents Sybil SLA providers (Orb in production, Device for hackathon testing)
 - **Arbitrator access** — only verified humans can uphold or overturn breaches
-- **Cross-chain** — proof verified on World Chain, relayed to Sepolia via CRE
+- **Cross-chain** — ZK proof verified on World Chain, relayed to Sepolia via CRE
 
 ## How Tenderly is Used
 
-- **Virtual TestNet** — Sepolia fork with unlimited faucet
+- **Virtual TestNet** — Sepolia fork with unlimited faucet, impersonation for testing
 - **Public explorer** — judges verify all transactions without a wallet
 - **evm_increaseTime** — manipulate block.timestamp for cooldown testing
+
+---
+
+## Deployed Contracts
+
+| Contract | Chain | Address |
+|---|---|---|
+| `SLAEnforcement` | Tenderly VNet (Sepolia fork) | `0x8286A8cfA5c8C1872097D9b43E01CbdEe934D319` |
+| `WorldChainRegistry` | World Chain Sepolia (4801) | `0xe1349d2c44422b70c73bf767afb58ae1c59cd1fd` |
+
+**Tenderly Explorer:** [View all transactions](https://dashboard.tenderly.co/robbyn/project/testnet/5c780e4f-4df5-4a50-b221-2342cd4b713e)
 
 ---
 
@@ -75,7 +90,7 @@ Dashboard (Next.js)          Mock APIs (:3001)
 oathlayer/
 ├── contracts/              # Foundry smart contracts
 │   ├── src/
-│   │   ├── SLAEnforcement.sol      # Main contract (Sepolia)
+│   │   ├── SLAEnforcement.sol      # Main contract (Sepolia VNet)
 │   │   └── WorldChainRegistry.sol  # Registration proxy (World Chain)
 │   ├── script/
 │   │   ├── DeploySLA.s.sol
@@ -86,14 +101,24 @@ oathlayer/
 │   ├── workflow.ts         # 4 handlers: cron, claim, provider reg, arbitrator reg
 │   └── mock-api/
 │       └── server.ts       # Mock uptime + compliance API
-├── dashboard/              # Next.js 14 + wagmi + RainbowKit
-│   └── src/app/
-│       ├── page.tsx                    # Live SLA dashboard
-│       ├── provider/register/page.tsx  # World ID + bond + compliance polling
-│       ├── sla/create/page.tsx         # Create SLA (compliance-gated)
-│       ├── claims/page.tsx             # File claims
-│       └── arbitrate/page.tsx          # World ID gated arbitration
+├── dashboard/              # Next.js + wagmi + RainbowKit
+│   └── src/
+│       ├── app/
+│       │   ├── (landing)/page.tsx         # Landing page
+│       │   ├── dashboard/page.tsx         # Live SLA dashboard
+│       │   ├── provider/register/page.tsx # World ID + bond + compliance
+│       │   ├── sla/create/page.tsx        # Create SLA (compliance-gated)
+│       │   ├── sla/[id]/page.tsx          # SLA detail view
+│       │   ├── claims/page.tsx            # File claims
+│       │   └── arbitrate/page.tsx         # World ID gated arbitration
+│       ├── components/
+│       │   ├── AppShell.tsx               # Shared nav + layout
+│       │   └── Providers.tsx              # wagmi + RainbowKit providers
+│       └── lib/
+│           ├── contract.ts                # ABI + address
+│           └── wagmi.ts                   # Chain config (Tenderly VNet)
 └── miniapp/                # World Mini App (mobile)
+    └── src/app/page.tsx    # Provider registration + claims via MiniKit
 ```
 
 ---
@@ -142,9 +167,6 @@ curl -X POST http://localhost:3001/set-uptime \
   -H "Content-Type: application/json" \
   -H "x-admin-token: demo-secret" \
   -d '{"uptime": 98.0}'
-
-# Check compliance
-curl http://localhost:3001/compliance/0x742d35Cc6634C0532925a3b844Bc9e7595f2bd9
 ```
 
 ### Dashboard
@@ -153,8 +175,17 @@ curl http://localhost:3001/compliance/0x742d35Cc6634C0532925a3b844Bc9e7595f2bd9
 cd dashboard
 npm install
 cp .env.local.example .env.local
-# Set NEXT_PUBLIC_SLA_CONTRACT_ADDRESS, NEXT_PUBLIC_RPC_URL, NEXT_PUBLIC_WLD_APP_ID
 npm run dev  # runs on :3000
+```
+
+### Mini App
+
+```bash
+cd miniapp
+npm install
+npm run dev  # runs on :3002
+# Tunnel: cloudflared tunnel run oathlayer-miniapp
+# Access via World App: https://oathlayer-miniapp.robbyn.xyz
 ```
 
 ---
@@ -187,16 +218,67 @@ npm run dev  # runs on :3000
 
 ---
 
-## Demo Script
+## World ID + CRE: Cross-Chain Identity Relay
 
-1. **Register provider** via World ID on dashboard → bond 1 ETH
-2. **Compliance check** fires automatically (CRE → ConfidentialHTTPClient → mock API) → APPROVED
-3. **Create SLA** (now compliance-gated) — 99.5% uptime, 5% penalty
-4. **AI prediction** — CRE cron fires, Gemini analyzes uptime → BreachWarning if risk > 70
-5. **Trigger breach** — `POST /set-uptime {"uptime": 98.0}` → CRE detects → `recordBreach()` → bond slashed
-6. **Dashboard updates** — live stats, breach warnings with risk badges, breach history
-7. **Rejection flow** — set `DEMO_REJECT_ADDRESS` → show compliance rejection
-8. **Tenderly explorer** — all transactions publicly verifiable
+World ID proofs are generated on World Chain via MiniKit. Because Sepolia does not natively support World ID, OathLayer uses Chainlink CRE as the trust relay: the CRE DON listens for the `ProviderRegistrationRequested` event on World Chain, verifies the event context via ConfidentialHTTPClient, and calls `setComplianceStatus()` on Sepolia — bringing Sybil-resistant identity to a chain where World ID does not natively exist.
+
+This pattern demonstrates CRE as a general-purpose cross-chain bridge for identity proofs, not just for token transfers.
+
+---
+
+## Chainlink Files
+
+| File | Chainlink Usage |
+|---|---|
+| [`workflow/workflow.ts`](./workflow/workflow.ts) | CRE SDK — cron trigger, EVM log triggers, ConfidentialHTTPClient, Secrets, Gemini AI integration |
+| [`contracts/src/SLAEnforcement.sol`](./contracts/src/SLAEnforcement.sol) | `AggregatorV3Interface` (ETH/USD price feed), `onlyCREForwarder` access control |
+| [`contracts/src/WorldChainRegistry.sol`](./contracts/src/WorldChainRegistry.sol) | Cross-chain registration proxy — emits events consumed by CRE EVM log trigger |
+
+---
+
+## Demo Flow
+
+1. **Landing** (`/`) — Product overview with live status badge
+2. **Register provider** (`/provider/register`) — Connect wallet → World ID verify → bond ETH → compliance check fires automatically (CRE → ConfidentialHTTPClient → mock API) → APPROVED
+3. **Create SLA** (`/sla/create`) — Compliance-gated form: set uptime threshold, penalty %, bond amount
+4. **Dashboard** (`/dashboard`) — Live stats: active SLAs, total bonded, AI warnings, breaches
+5. **AI prediction** — CRE cron fires → Gemini analyzes uptime → BreachWarning if risk > 70
+6. **Trigger breach** — `POST /set-uptime {"uptime": 98.0}` → CRE detects → `recordBreach()` → bond slashed
+7. **File claim** (`/claims` or Mini App) — Tenant submits maintenance request → triggers reactive CRE scan
+8. **Arbitrate** (`/arbitrate`) — World ID gated: uphold or overturn breach
+9. **Tenderly explorer** — All transactions publicly verifiable without a wallet
+
+### Quick Test (No World ID Required)
+
+```bash
+# 1. Start services
+cd workflow/mock-api && npm run dev        # :3001
+cd dashboard && npm run dev                # :3000
+
+# 2. Fund wallet + register provider via Tenderly impersonation
+cast rpc tenderly_setBalance <YOUR_ADDRESS> 0x56BC75E2D63100000 \
+  --rpc-url $TENDERLY_RPC_URL
+
+cast send $SLA_CONTRACT "registerProviderRelayed(address,uint256)" \
+  <YOUR_ADDRESS> 12345 \
+  --rpc-url $TENDERLY_RPC_URL \
+  --from $CRE_FORWARDER --unlocked
+
+cast send $SLA_CONTRACT "setComplianceStatus(address,uint8)" \
+  <YOUR_ADDRESS> 1 \
+  --rpc-url $TENDERLY_RPC_URL \
+  --from $CRE_FORWARDER --unlocked
+
+# 3. Create SLA on dashboard → /sla/create
+# 4. Force breach
+curl -X POST http://localhost:3001/set-uptime \
+  -H "x-admin-token: demo-secret" \
+  -H "Content-Type: application/json" \
+  -d '{"uptime": 90.0}'
+
+# 5. Run CRE workflow
+cd workflow && cre workflow simulate --verbose --broadcast
+```
 
 ---
 
@@ -209,74 +291,32 @@ npm run dev  # runs on :3000
 | AI | Gemini 2.0 Flash (structured output, TEE-encrypted) |
 | Price Feeds | Chainlink AggregatorV3Interface (ETH/USD) |
 | Privacy | CRE ConfidentialHTTPClient (TEE enclaves) |
-| Identity | World ID / IDKit v1 |
+| Identity | World ID / IDKit v1 + MiniKit |
 | Testing | Tenderly Virtual TestNets |
-| Frontend | Next.js 14 + wagmi + viem + RainbowKit |
+| Frontend | Next.js + wagmi + viem + RainbowKit |
 | Mobile | World Mini App SDK (MiniKit) |
-| Charts | Recharts |
 
-## Testing & Verification Notes
+---
+
+## Testing Notes
 
 ### World ID — Orb vs Device Level
 
-In production, OathLayer uses **Orb-level** World ID verification for provider registration — the highest trust tier requiring in-person biometric verification at a World ID Orb. This prevents Sybil attacks on SLA providers and ensures one human = one provider identity.
-
-**For hackathon testing**, provider registration is downgraded to **Device level** (phone signup only, no Orb required) so judges can verify the full flow without physical Orb access. The cryptographic proof structure, ZK verification, and on-chain relay are identical between levels — only the trust tier changes.
-
-| Flow | Production | Hackathon Testing |
-|---|---|---|
-| Provider registration | Orb level (biometric) | Device level (phone signup) |
-| Arbitrator registration | Device level | Device level ✅ |
-| fileClaim (Mini App) | Device level | Device level ✅ |
+In production, OathLayer uses **Orb-level** World ID verification. For hackathon testing, registration uses **Device level** (phone signup, no Orb required). The ZK proof structure and on-chain relay are identical — only the trust tier changes.
 
 ### Mini App Testing
 
-The Mini App (`https://oathlayer-miniapp.robbyn.xyz`) requires **World App** on mobile — it cannot run in a regular browser as MiniKit is only injected inside World App's built-in browser.
-
-**To test the Mini App:**
+The Mini App requires **World App** on mobile:
 1. Install [World App](https://worldcoin.org/download) on iOS or Android
 2. Create an account (no Orb needed for Device level)
-3. Tap the explore icon → enter `https://oathlayer-miniapp.robbyn.xyz`
-4. Register as provider → verify with World ID (Device) → done
-
-### Dashboard Testing (No Mobile Required)
-
-The full enforcement flow can be verified on the dashboard alone:
-
-```bash
-# 1. Start services
-cd workflow/mock-api && npm run dev        # :3001 — mock uptime + compliance API
-cd dashboard && npm run dev                # :3000 — dashboard
-
-# 2. Whitelist yourself as provider (bypasses World ID for local testing)
-cast send 0x8286A8cfA5c8C1872097D9b43E01CbdEe934D319 \
-  "setComplianceStatus(address,uint8)" <YOUR_ADDRESS> 1 \
-  --rpc-url https://virtual.sepolia.eu.rpc.tenderly.co/31c848ed-b45f-4f46-a7ab-7506091ac79e \
-  --private-key <YOUR_KEY>
-
-# 3. Create SLA on dashboard → /sla/create
-# 4. Force a breach via mock API
-curl -X POST http://localhost:3001/set-uptime \
-  -H "x-admin-token: demo-secret" \
-  -H "Content-Type: application/json" \
-  -d '{"uptime": 90.0}'
-
-# 5. Run CRE workflow to detect breach and write on-chain
-cd workflow && npm run simulate:broadcast
-
-# 6. Watch dashboard update — breach warning, bond slashed, breach history
-```
-
-### Tenderly Explorer
-
-All transactions are publicly verifiable (no wallet needed):
-`https://dashboard.tenderly.co/robbyn/project/testnet/5c780e4f-4df5-4a50-b221-2342cd4b713e`
+3. Tap explore → enter `https://oathlayer-miniapp.robbyn.xyz`
+4. Register as provider → verify with World ID → done
 
 ---
 
 ## Known Limitations
 
-- Cross-chain relay trust model: CRE DON is trust anchor, World ID root not re-verified on Sepolia
+- Cross-chain relay trust: CRE DON is trust anchor, World ID root not re-verified on Sepolia
 - Arbitration reversal has no on-chain enforcement in V1
 - ComplianceStatus has no expiry mechanism
-- `consensusMedianAggregation` on Gemini riskScore not yet tested in production CRE
+- `scanSLAs` is O(N) with N separate consensus rounds — fine at demo scale

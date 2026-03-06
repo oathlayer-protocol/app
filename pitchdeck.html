@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OathLayer — Pitch Deck</title>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&f[]=general-sans@400,500,600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0a0a14;
+  --bg-card: #151525;
+  --border: rgba(255,255,255,0.07);
+  --border-hover: rgba(255,255,255,0.14);
+  --blue: #375BD2;
+  --blue-light: #5493F7;
+  --blue-glow: rgba(55,91,210,0.25);
+  --cyan: #38bdf8;
+  --text: #e2e8f0;
+  --muted: rgba(255,255,255,0.45);
+  --muted-strong: rgba(255,255,255,0.65);
+  --red: #ef4444;
+  --green: #4ade80;
+  --amber: #f59e0b;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'General Sans', -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ═══ NOISE OVERLAY ═══ */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.5;
+}
+
+/* ═══ BACKGROUND ORBS ═══ */
+.bg-orbs {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.12;
+  animation: orbFloat 20s ease-in-out infinite;
+}
+.orb-1 { width: 600px; height: 600px; background: var(--blue); top: -200px; right: -100px; animation-delay: 0s; }
+.orb-2 { width: 500px; height: 500px; background: #6366f1; bottom: -150px; left: -100px; animation-delay: -7s; }
+.orb-3 { width: 400px; height: 400px; background: var(--cyan); top: 40%; left: 50%; animation-delay: -14s; opacity: 0.06; }
+
+@keyframes orbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.05); }
+  66% { transform: translate(-20px, 30px) scale(0.95); }
+}
+
+/* ═══ LAYOUT ═══ */
+.deck-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+  z-index: 1;
+}
+
+.deck {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 80px;
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity, transform;
+  transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.slide.active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.slide.slide-below {
+  transform: translateY(40px) scale(0.98);
+}
+
+.slide.slide-above {
+  transform: translateY(-40px) scale(0.98);
+}
+
+/* ═══ SPEAKER NOTES BAR ═══ */
+.notes-bar {
+  flex-shrink: 0;
+  height: 72px;
+  background: rgba(0,0,0,0.5);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 80px;
+  position: relative;
+  z-index: 10;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.notes-text {
+  font-size: 13px;
+  color: var(--muted-strong);
+  text-align: center;
+  max-width: 900px;
+  line-height: 1.5;
+  transition: opacity 0.4s ease;
+}
+.notes-text strong {
+  color: var(--blue-light);
+  font-weight: 600;
+}
+
+/* ═══ PROGRESS BAR ═══ */
+.progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--blue), var(--blue-light));
+  z-index: 100;
+  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 0 20px var(--blue-glow);
+}
+
+/* ═══ SLIDE COUNTER ═══ */
+.slide-counter {
+  position: fixed;
+  bottom: 96px;
+  right: 40px;
+  z-index: 100;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.slide-counter .current { color: #fff; }
+
+/* ═══ NAV HINT ═══ */
+.nav-hint {
+  position: fixed;
+  bottom: 96px;
+  left: 40px;
+  z-index: 100;
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.6;
+}
+.nav-hint kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  font-size: 10px;
+  font-family: inherit;
+  color: var(--muted-strong);
+}
+
+/* ═══ TYPOGRAPHY ═══ */
+h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
+
+.slide-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--blue-light);
+  margin-bottom: 16px;
+}
+
+.slide-title {
+  font-size: clamp(32px, 4.5vw, 56px);
+  font-weight: 600;
+  line-height: 1.1;
+  color: #fff;
+  letter-spacing: -0.025em;
+  text-align: center;
+  max-width: 900px;
+}
+
+.slide-subtitle {
+  font-size: clamp(15px, 1.8vw, 18px);
+  color: var(--muted);
+  line-height: 1.7;
+  text-align: center;
+  max-width: 640px;
+  margin-top: 16px;
+}
+
+/* ═══ GLASS CARD ═══ */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  transition: border-color 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(84,147,247,0.2), transparent);
+  pointer-events: none;
+}
+
+/* ═══ STAGGER ANIMATIONS ═══ */
+.slide.active .stagger { animation: staggerIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.slide.active .stagger:nth-child(1) { animation-delay: 0.1s; }
+.slide.active .stagger:nth-child(2) { animation-delay: 0.18s; }
+.slide.active .stagger:nth-child(3) { animation-delay: 0.26s; }
+.slide.active .stagger:nth-child(4) { animation-delay: 0.34s; }
+.slide.active .stagger:nth-child(5) { animation-delay: 0.42s; }
+.slide.active .stagger:nth-child(6) { animation-delay: 0.50s; }
+.slide.active .stagger:nth-child(7) { animation-delay: 0.58s; }
+.slide.active .stagger:nth-child(8) { animation-delay: 0.66s; }
+
+@keyframes staggerIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══ BADGE ═══ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  border-radius: 100px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ═══ ICON BOX ═══ */
+.icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+.icon-box.blue { background: rgba(55,91,210,0.12); }
+.icon-box.cyan { background: rgba(56,189,248,0.12); }
+.icon-box.amber { background: rgba(245,158,11,0.12); }
+.icon-box.red { background: rgba(239,68,68,0.12); }
+.icon-box.green { background: rgba(74,222,128,0.12); }
+.icon-box.purple { background: rgba(139,92,246,0.12); }
+
+/* ═══ FLOW DIAGRAM ═══ */
+.flow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.flow-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 20px 16px;
+  min-width: 130px;
+  max-width: 160px;
+}
+.flow-step .step-num {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(55,91,210,0.15);
+  border: 1px solid rgba(55,91,210,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--blue-light);
+  margin-bottom: 12px;
+}
+.flow-step .step-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.flow-step .step-desc {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.flow-arrow {
+  font-size: 18px;
+  color: rgba(55,91,210,0.4);
+  flex-shrink: 0;
+  margin: 0 -4px;
+}
+
+/* ═══ ARCHITECTURE DIAGRAM ═══ */
+.arch-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  gap: 0;
+  align-items: center;
+  width: 100%;
+  max-width: 1000px;
+}
+.arch-node {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 20px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.arch-node::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 20%;
+  right: 20%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--blue-glow), transparent);
+}
+.arch-node h3 {
+  font-size: 15px;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.arch-node .arch-chain {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.arch-node ul {
+  list-style: none;
+  text-align: left;
+}
+.arch-node ul li {
+  font-size: 12px;
+  color: var(--muted-strong);
+  padding: 4px 0;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+.arch-node ul li:first-child { border-top: none; }
+.arch-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+}
+.arch-connector .line {
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--blue), var(--blue-light));
+  border-radius: 1px;
+  position: relative;
+}
+.arch-connector .line::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: -3px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid var(--blue-light);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+}
+.arch-connector span {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ═══ GRID LAYOUTS ═══ */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; max-width: 880px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; max-width: 960px; }
+.grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; width: 100%; max-width: 1000px; }
+
+/* ═══ TECH LOGO ═══ */
+.tech-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  max-width: 800px;
+}
+.tech-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted-strong);
+}
+.tech-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+/* ═══ TITLE SLIDE ═══ */
+.title-logo {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 24px;
+  animation: logoFloat 4s ease-in-out infinite;
+}
+@keyframes logoFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.title-name {
+  font-family: 'Clash Display', sans-serif;
+  font-size: clamp(48px, 7vw, 80px);
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+.title-tagline {
+  font-size: clamp(16px, 2vw, 20px);
+  color: var(--muted);
+  font-weight: 400;
+  max-width: 560px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* ═══ PAIN CARDS ═══ */
+.pain-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 800px;
+}
+.pain-card { padding: 24px; }
+.pain-card .pain-icon { font-size: 24px; margin-bottom: 12px; }
+.pain-card h3 { font-size: 15px; color: #fff; margin-bottom: 6px; }
+.pain-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+/* ═══ PILLAR ═══ */
+.pillar { padding: 24px; text-align: center; }
+.pillar h3 { font-size: 15px; color: #fff; margin-bottom: 6px; }
+.pillar p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+/* ═══ CRE CARDS ═══ */
+.cre-card { padding: 20px; }
+.cre-card h3 { font-size: 13px; color: #fff; margin-bottom: 4px; }
+.cre-card p { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.cre-num {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--blue-light);
+  margin-bottom: 8px;
+}
+
+/* ═══ AI FLOW ═══ */
+.ai-flow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 900px;
+  width: 100%;
+}
+.ai-center {
+  flex-shrink: 0;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(55,91,210,0.2) 0%, transparent 70%);
+  border: 1px solid rgba(55,91,210,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  position: relative;
+}
+.ai-center::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1px solid rgba(55,91,210,0.1);
+  animation: aiPulse 3s ease-in-out infinite;
+}
+@keyframes aiPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.08); opacity: 0.5; }
+}
+
+/* ═══ BRIDGE VISUAL ═══ */
+.bridge-visual {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  max-width: 860px;
+  justify-content: center;
+}
+.bridge-node {
+  padding: 20px 24px;
+  text-align: center;
+  min-width: 200px;
+}
+.bridge-node h3 { font-size: 14px; color: #fff; margin-bottom: 4px; }
+.bridge-node p { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.bridge-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+.bridge-arrow .arrow-line {
+  width: 80px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--blue), var(--blue-light));
+  position: relative;
+}
+.bridge-arrow .arrow-line::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  top: -4px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid var(--blue-light);
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+}
+.bridge-arrow span {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+/* ═══ DEMO BROWSER ═══ */
+.browser-frame {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  width: 100%;
+}
+.browser-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid var(--border);
+}
+.browser-dot { width: 8px; height: 8px; border-radius: 50%; }
+.browser-dot.red { background: #ff5f57; }
+.browser-dot.yellow { background: #ffbd2e; }
+.browser-dot.green { background: #28c840; }
+.browser-url { flex: 1; text-align: center; font-size: 11px; color: var(--muted); font-family: monospace; }
+.browser-content { padding: 24px; min-height: 160px; display: flex; flex-direction: column; gap: 12px; }
+.mock-stat-row { display: flex; gap: 12px; }
+.mock-stat { flex: 1; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; }
+.mock-stat .ms-label { font-size: 10px; color: var(--muted); }
+.mock-stat .ms-val { font-size: 18px; font-weight: 600; color: #fff; margin-top: 4px; font-family: 'Clash Display', sans-serif; }
+.mock-card-row { display: flex; gap: 8px; }
+.mock-sla { flex: 1; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 10px; }
+.mock-sla .sla-head { display: flex; justify-content: space-between; align-items: center; }
+.mock-sla .sla-id { font-size: 10px; color: var(--muted); font-family: monospace; }
+.mock-sla .sla-badge { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: rgba(74,222,128,0.1); color: #4ade80; }
+.mock-sla .sla-bar { height: 3px; border-radius: 2px; background: rgba(255,255,255,0.06); margin-top: 8px; }
+.mock-sla .sla-bar-fill { height: 100%; border-radius: 2px; background: var(--blue); }
+
+/* ═══ LINKS ═══ */
+.links-row { display: flex; gap: 12px; margin-top: 24px; }
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.link-btn.primary { background: var(--blue); color: #fff; }
+.link-btn.primary:hover { background: #4068e0; box-shadow: 0 4px 20px var(--blue-glow); }
+.link-btn.secondary { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--muted-strong); }
+.link-btn.secondary:hover { border-color: var(--border-hover); color: #fff; }
+
+/* ═══ RESPONSIVE ═══ */
+@media (max-width: 768px) {
+  .slide { padding: 30px 24px; }
+  .notes-bar { height: 60px; padding: 0 24px; }
+  .notes-text { font-size: 12px; }
+  .grid-3 { grid-template-columns: 1fr; }
+  .grid-5 { grid-template-columns: repeat(2, 1fr); }
+  .pain-grid { grid-template-columns: 1fr; }
+  .arch-grid { grid-template-columns: 1fr; gap: 12px; }
+  .arch-connector { transform: rotate(90deg); padding: 8px 0; }
+  .flow { flex-direction: column; }
+  .flow-arrow { transform: rotate(90deg); }
+  .bridge-visual { flex-direction: column; }
+  .bridge-arrow { transform: rotate(90deg); }
+  .ai-flow { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<div class="progress-bar" id="progress"></div>
+
+<div class="slide-counter">
+  <span class="current" id="currentSlide">1</span>
+  <span>/</span>
+  <span id="totalSlides">11</span>
+</div>
+
+<div class="nav-hint">
+  <kbd>←</kbd><kbd>→</kbd> navigate
+</div>
+
+<div class="deck-wrapper">
+<div class="deck" id="deck">
+
+  <!-- ═══ SLIDE 1: TITLE ═══ -->
+  <div class="slide active" data-slide="0" data-notes="Introduce OathLayer — autonomous SLA enforcement for tokenized real-world assets. Built for the Chainlink CONVERGENCE hackathon targeting 6 prize tracks.">
+    <div class="badge stagger" style="margin-bottom: 32px;">
+      <div class="badge-dot"></div>
+      <span>Chainlink CONVERGENCE Hackathon</span>
+    </div>
+    <img src="./logo-erased.png" alt="OathLayer" class="title-logo stagger">
+    <h1 class="title-name stagger">OathLayer</h1>
+    <p class="title-tagline stagger">Autonomous SLA Enforcement for Tokenized Real-World Assets</p>
+    <div style="margin-top: 40px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;" class="stagger">
+      <span class="badge" style="font-size: 11px;">Chainlink CRE</span>
+      <span class="badge" style="font-size: 11px;">World ID</span>
+      <span class="badge" style="font-size: 11px;">Gemini Flash</span>
+      <span class="badge" style="font-size: 11px;">Tenderly</span>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 2: PROBLEM ═══ -->
+  <div class="slide slide-below" data-slide="1" data-notes="The RWA market is $500B+ and growing, but service-level agreements are still enforced manually. Providers face no real consequences for breaches. Disputes take weeks through traditional legal channels. There's no proactive monitoring — breaches are only caught after damage is done.">
+    <span class="slide-label stagger">The Problem</span>
+    <h2 class="slide-title stagger">RWA Service Agreements<br>Are Unenforceable</h2>
+    <p class="slide-subtitle stagger">$500B+ in tokenized real-world assets with no automated compliance enforcement</p>
+    <div class="pain-grid stagger" style="margin-top: 32px;">
+      <div class="card pain-card stagger">
+        <div class="pain-icon">🔍</div>
+        <h3>Manual Monitoring</h3>
+        <p>Uptime and SLA compliance checked by humans on spreadsheets. Violations go unnoticed for days.</p>
+      </div>
+      <div class="card pain-card stagger">
+        <div class="pain-icon">⚖️</div>
+        <h3>No Accountability</h3>
+        <p>Providers face zero consequences when they breach SLA terms. No bonded collateral, no automatic penalties.</p>
+      </div>
+      <div class="card pain-card stagger">
+        <div class="pain-icon">⏳</div>
+        <h3>Slow Disputes</h3>
+        <p>Breach disputes take weeks to resolve. Legal arbitration is expensive and inaccessible for most tenants.</p>
+      </div>
+      <div class="card pain-card stagger">
+        <div class="pain-icon">🤖</div>
+        <h3>No Prediction</h3>
+        <p>Breaches are detected after they happen. No proactive monitoring or early warning systems exist.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 3: SOLUTION ═══ -->
+  <div class="slide slide-below" data-slide="2" data-notes="OathLayer solves this with three pillars: <strong>bonded collateral</strong> so providers have skin in the game, <strong>CRE automation</strong> that monitors 24/7 without human intervention, and <strong>AI prediction</strong> that warns about breaches before they happen. Penalties execute automatically — no lawyers, no delays.">
+    <span class="slide-label stagger">The Solution</span>
+    <h2 class="slide-title stagger">AI-Powered, On-Chain<br>SLA Enforcement</h2>
+    <p class="slide-subtitle stagger">Providers bond collateral. CRE monitors 24/7. AI predicts breaches. Penalties auto-execute.</p>
+    <div class="grid-3 stagger" style="margin-top: 32px;">
+      <div class="card pillar stagger">
+        <div class="icon-box blue" style="margin: 0 auto 16px;">🛡️</div>
+        <h3>Bonded Collateral</h3>
+        <p>Providers lock ETH as a bond when creating SLAs. Breach penalties are automatically slashed from this bond.</p>
+      </div>
+      <div class="card pillar stagger">
+        <div class="icon-box cyan" style="margin: 0 auto 16px;">⚡</div>
+        <h3>CRE Automation</h3>
+        <p>Chainlink CRE monitors uptime every 15 minutes. Breaches trigger instant on-chain penalty execution.</p>
+      </div>
+      <div class="card pillar stagger">
+        <div class="icon-box purple" style="margin: 0 auto 16px;">🧠</div>
+        <h3>AI Prediction</h3>
+        <p>Gemini Flash analyzes trends and predicts breaches before they happen. Early warnings protect tenants.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 4: HOW IT WORKS ═══ -->
+  <div class="slide slide-below" data-slide="3" data-notes="Walk through the full lifecycle: A provider registers with World ID (Sybil resistance), creates an SLA bonding ETH as collateral, then CRE cron jobs monitor uptime every 15 minutes. Gemini Flash scores breach risk in real-time. If uptime drops below the SLA threshold, the bond is automatically slashed and the tenant is compensated.">
+    <span class="slide-label stagger">How It Works</span>
+    <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">End-to-End Enforcement Flow</h2>
+    <div class="flow stagger" style="margin-top: 40px;">
+      <div class="flow-step stagger">
+        <div class="step-num">1</div>
+        <div class="step-label">Register</div>
+        <div class="step-desc">Provider verifies identity with World ID</div>
+      </div>
+      <div class="flow-arrow stagger">→</div>
+      <div class="flow-step stagger">
+        <div class="step-num">2</div>
+        <div class="step-label">Create SLA</div>
+        <div class="step-desc">Define terms, bond ETH as collateral</div>
+      </div>
+      <div class="flow-arrow stagger">→</div>
+      <div class="flow-step stagger">
+        <div class="step-num">3</div>
+        <div class="step-label">CRE Monitors</div>
+        <div class="step-desc">Cron scans uptime every 15 minutes</div>
+      </div>
+      <div class="flow-arrow stagger">→</div>
+      <div class="flow-step stagger">
+        <div class="step-num">4</div>
+        <div class="step-label">AI Predicts</div>
+        <div class="step-desc">Gemini Flash scores breach risk</div>
+      </div>
+      <div class="flow-arrow stagger">→</div>
+      <div class="flow-step stagger">
+        <div class="step-num">5</div>
+        <div class="step-label">Breach Found</div>
+        <div class="step-desc">Uptime below SLA threshold</div>
+      </div>
+      <div class="flow-arrow stagger">→</div>
+      <div class="flow-step stagger">
+        <div class="step-num">6</div>
+        <div class="step-label">Auto-Slash</div>
+        <div class="step-desc">Bond penalized, tenant compensated</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 5: ARCHITECTURE ═══ -->
+  <div class="slide slide-below" data-slide="4" data-notes="Three-system architecture spanning two chains plus the CRE DON. <strong>World Chain</strong> handles identity via World ID ZK proofs. <strong>CRE Workflows</strong> bridge identity cross-chain, run cron monitoring, and call Gemini for AI predictions. <strong>Sepolia VNet</strong> hosts the enforcement contract with bond management and breach recording.">
+    <span class="slide-label stagger">Architecture</span>
+    <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">Cross-Chain System Design</h2>
+    <div class="arch-grid stagger" style="margin-top: 36px;">
+      <div class="arch-node stagger">
+        <div style="font-size: 24px; margin-bottom: 8px;">🌐</div>
+        <h3>World Chain</h3>
+        <div class="arch-chain">Chain ID: 4801</div>
+        <ul>
+          <li>WorldChainRegistry</li>
+          <li>World ID ZK Proofs</li>
+          <li>Provider Registration</li>
+          <li>Arbitrator Registration</li>
+        </ul>
+      </div>
+      <div class="arch-connector stagger">
+        <div class="line"></div>
+        <span>CRE Relay</span>
+      </div>
+      <div class="arch-node stagger" style="border-color: rgba(55,91,210,0.2);">
+        <div style="font-size: 24px; margin-bottom: 8px;">⚡</div>
+        <h3>CRE Workflows</h3>
+        <div class="arch-chain">Chainlink DON</div>
+        <ul>
+          <li>Cron (15min scans)</li>
+          <li>Gemini Flash AI</li>
+          <li>ConfidHTTP (TEE)</li>
+          <li>Event reactions</li>
+        </ul>
+      </div>
+      <div class="arch-connector stagger">
+        <div class="line"></div>
+        <span>Enforce</span>
+      </div>
+      <div class="arch-node stagger">
+        <div style="font-size: 24px; margin-bottom: 8px;">🔒</div>
+        <h3>Sepolia VNet</h3>
+        <div class="arch-chain">Tenderly Fork</div>
+        <ul>
+          <li>SLAEnforcement</li>
+          <li>Bond Management</li>
+          <li>Breach Recording</li>
+          <li>Compliance Gate</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 6: CRE INTEGRATION ═══ -->
+  <div class="slide slide-below" data-slide="5" data-notes="<strong>This is the key slide for judges.</strong> We use all 5 CRE capabilities: Cron triggers for scheduled monitoring, EVM Log triggers for reactive event handling, ConfidentialHTTPClient for TEE-encrypted API calls (provider PII never visible to DON nodes), Secrets vault for threshold-encrypted API keys, and cross-chain relay to bridge World ID proofs from World Chain to Sepolia.">
+    <span class="slide-label stagger">Chainlink CRE</span>
+    <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">5 CRE Capabilities Used</h2>
+    <p class="slide-subtitle stagger">Deep integration across the full CRE feature set</p>
+    <div class="grid-5 stagger" style="margin-top: 28px;">
+      <div class="card cre-card stagger">
+        <div class="cre-num">01</div>
+        <div class="icon-box blue" style="width: 32px; height: 32px; font-size: 14px; margin-bottom: 10px;">⏰</div>
+        <h3>Cron Trigger</h3>
+        <p>Scans all active SLAs every 15 minutes for uptime compliance</p>
+      </div>
+      <div class="card cre-card stagger">
+        <div class="cre-num">02</div>
+        <div class="icon-box cyan" style="width: 32px; height: 32px; font-size: 14px; margin-bottom: 10px;">📡</div>
+        <h3>EVM Log Trigger</h3>
+        <p>Reacts to ClaimFiled, ProviderReg, ArbitratorReg events</p>
+      </div>
+      <div class="card cre-card stagger">
+        <div class="cre-num">03</div>
+        <div class="icon-box green" style="width: 32px; height: 32px; font-size: 14px; margin-bottom: 10px;">🔐</div>
+        <h3>ConfidHTTP</h3>
+        <p>Encrypted KYC checks via TEE enclaves — PII never exposed</p>
+      </div>
+      <div class="card cre-card stagger">
+        <div class="cre-num">04</div>
+        <div class="icon-box amber" style="width: 32px; height: 32px; font-size: 14px; margin-bottom: 10px;">🗝️</div>
+        <h3>Secrets Vault</h3>
+        <p>Gemini, Compliance, Uptime API keys threshold-encrypted</p>
+      </div>
+      <div class="card cre-card stagger">
+        <div class="cre-num">05</div>
+        <div class="icon-box purple" style="width: 32px; height: 32px; font-size: 14px; margin-bottom: 10px;">🌉</div>
+        <h3>Cross-Chain</h3>
+        <p>World Chain → Sepolia identity relay via CRE forwarder</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 7: AI INTEGRATION ═══ -->
+  <div class="slide slide-below" data-slide="6" data-notes="Gemini 2.0 Flash receives batched uptime data for all active SLAs in a single prompt. It returns structured JSON with a risk score (0-100) and a human-readable prediction. Scores above 70 trigger an on-chain BreachWarning event with a 4-hour cooldown per SLA. The API key is protected inside CRE's TEE enclave — DON nodes never see it.">
+    <span class="slide-label stagger">AI Integration</span>
+    <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">Predictive Breach Detection</h2>
+    <div class="ai-flow stagger" style="margin-top: 32px;">
+      <div class="card stagger" style="flex: 1; padding: 20px;">
+        <h3 style="font-size: 14px; color: #fff; margin-bottom: 12px;">Input: Uptime Data</h3>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: var(--muted); font-family: monospace;">SLA #0</span>
+            <span style="color: var(--green);">99.2%</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: var(--muted); font-family: monospace;">SLA #1</span>
+            <span style="color: var(--amber);">97.8%</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: var(--muted); font-family: monospace;">SLA #2</span>
+            <span style="color: var(--red);">95.1%</span>
+          </div>
+        </div>
+      </div>
+      <div class="ai-center stagger">🧠</div>
+      <div class="card stagger" style="flex: 1; padding: 20px;">
+        <h3 style="font-size: 14px; color: #fff; margin-bottom: 12px;">Output: Risk Scores</h3>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; justify-content: space-between; font-size: 12px; align-items: center;">
+            <span style="color: var(--muted);">SLA #0</span>
+            <span style="padding: 2px 8px; border-radius: 4px; background: rgba(74,222,128,0.1); color: #4ade80; font-size: 11px;">Low · 25</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; align-items: center;">
+            <span style="color: var(--muted);">SLA #1</span>
+            <span style="padding: 2px 8px; border-radius: 4px; background: rgba(245,158,11,0.1); color: #f59e0b; font-size: 11px;">Medium · 62</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; align-items: center;">
+            <span style="color: var(--muted);">SLA #2</span>
+            <span style="padding: 2px 8px; border-radius: 4px; background: rgba(239,68,68,0.1); color: #ef4444; font-size: 11px;">High · 85</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="grid-2 stagger" style="margin-top: 20px; max-width: 900px;">
+      <div class="card stagger" style="padding: 16px;">
+        <div style="font-size: 12px; color: var(--muted-strong);"><strong style="color: #fff;">Gemini 2.0 Flash</strong> — Structured JSON output via responseSchema. Batched analysis of all SLAs in single prompt.</div>
+      </div>
+      <div class="card stagger" style="padding: 16px;">
+        <div style="font-size: 12px; color: var(--muted-strong);"><strong style="color: #fff;">TEE Protected</strong> — API key encrypted via ConfidentialHTTPClient. DON nodes never see the Gemini key.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 8: WORLD ID + CRE ═══ -->
+  <div class="slide slide-below" data-slide="7" data-notes="This is a <strong>novel pattern</strong>: using CRE as an identity bridge. World ID proofs don't natively exist on Sepolia. The user verifies on World Chain via MiniKit, CRE picks up the ProviderRegistrationRequested event, runs a ConfidHTTP KYC check, then relays the result to Sepolia via setComplianceStatus(). This brings Sybil-resistant identity to any EVM chain.">
+    <span class="slide-label stagger">World ID + CRE</span>
+    <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">Cross-Chain Identity Bridge</h2>
+    <p class="slide-subtitle stagger">CRE as an identity relay — not just a token bridge</p>
+    <div class="bridge-visual stagger" style="margin-top: 36px;">
+      <div class="card bridge-node stagger">
+        <div style="font-size: 28px; margin-bottom: 8px;">🌐</div>
+        <h3>World Chain</h3>
+        <p>User verifies via World ID MiniKit.<br>ZK proof emitted as event.</p>
+      </div>
+      <div class="bridge-arrow stagger">
+        <div class="arrow-line"></div>
+        <span>CRE listens</span>
+      </div>
+      <div class="card bridge-node stagger" style="border-color: rgba(55,91,210,0.2);">
+        <div style="font-size: 28px; margin-bottom: 8px;">⚡</div>
+        <h3>CRE DON</h3>
+        <p>Picks up ProviderRegRequested.<br>Runs ConfidHTTP KYC check.</p>
+      </div>
+      <div class="bridge-arrow stagger">
+        <div class="arrow-line"></div>
+        <span>Relay result</span>
+      </div>
+      <div class="card bridge-node stagger">
+        <div style="font-size: 28px; margin-bottom: 8px;">🔒</div>
+        <h3>Sepolia</h3>
+        <p>setComplianceStatus() called.<br>Sybil-resistant identity on any chain.</p>
+      </div>
+    </div>
+    <div class="card stagger" style="margin-top: 24px; padding: 16px 24px; max-width: 680px; text-align: center;">
+      <p style="font-size: 13px; color: var(--muted-strong);">
+        <strong style="color: var(--blue-light);">Novel pattern:</strong> World ID proofs don't natively exist on Sepolia. CRE bridges identity proofs cross-chain — enabling Sybil resistance on any EVM chain.
+      </p>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 9: LIVE DEMO ═══ -->
+  <div class="slide slide-below" data-slide="8" data-notes="Everything is live on Tenderly VNet. Walk through the demo: landing page, connect wallet, register as provider, create an SLA with bonded ETH, watch AI breach warnings appear, trigger a breach, see the bond get slashed. The Mini App runs inside World App on mobile for provider registration and claim filing. All transactions are publicly verifiable on Tenderly Explorer.">
+    <span class="slide-label stagger">Live Demo</span>
+    <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">Working Product on Tenderly VNet</h2>
+    <div class="grid-2 stagger" style="margin-top: 28px; max-width: 960px;">
+      <div class="browser-frame stagger">
+        <div class="browser-bar">
+          <div class="browser-dot red"></div>
+          <div class="browser-dot yellow"></div>
+          <div class="browser-dot green"></div>
+          <div class="browser-url">oathlayer.vercel.app/dashboard</div>
+        </div>
+        <div class="browser-content">
+          <div style="font-size: 13px; font-weight: 600; color: #fff;">Dashboard</div>
+          <div class="mock-stat-row">
+            <div class="mock-stat"><div class="ms-label">Active SLAs</div><div class="ms-val">3</div></div>
+            <div class="mock-stat"><div class="ms-label">Total Bonded</div><div class="ms-val">3.00 ETH</div></div>
+          </div>
+          <div class="mock-stat-row">
+            <div class="mock-stat"><div class="ms-label">Warnings</div><div class="ms-val">2</div></div>
+            <div class="mock-stat"><div class="ms-label">Breaches</div><div class="ms-val">1</div></div>
+          </div>
+          <div class="mock-card-row">
+            <div class="mock-sla">
+              <div class="sla-head"><span class="sla-id">SLA #0</span><span class="sla-badge">Active</span></div>
+              <div class="sla-bar"><div class="sla-bar-fill" style="width: 80%;"></div></div>
+            </div>
+            <div class="mock-sla">
+              <div class="sla-head"><span class="sla-id">SLA #1</span><span class="sla-badge">Active</span></div>
+              <div class="sla-bar"><div class="sla-bar-fill" style="width: 60%;"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="card stagger" style="padding: 16px;">
+          <div style="font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 6px;">Demo Flow</div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 12px; color: var(--muted-strong); display: flex; gap: 8px;"><span style="color: var(--blue-light);">1.</span> Landing page → Open Dashboard</div>
+            <div style="font-size: 12px; color: var(--muted-strong); display: flex; gap: 8px;"><span style="color: var(--blue-light);">2.</span> Register provider with World ID</div>
+            <div style="font-size: 12px; color: var(--muted-strong); display: flex; gap: 8px;"><span style="color: var(--blue-light);">3.</span> Create SLA — bond 1 ETH</div>
+            <div style="font-size: 12px; color: var(--muted-strong); display: flex; gap: 8px;"><span style="color: var(--blue-light);">4.</span> AI breach warning appears</div>
+            <div style="font-size: 12px; color: var(--muted-strong); display: flex; gap: 8px;"><span style="color: var(--blue-light);">5.</span> Bond slashed automatically</div>
+            <div style="font-size: 12px; color: var(--muted-strong); display: flex; gap: 8px;"><span style="color: var(--blue-light);">6.</span> Verify on Tenderly Explorer</div>
+          </div>
+        </div>
+        <div class="card stagger" style="padding: 16px; border-color: rgba(55,91,210,0.15);">
+          <div style="font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 4px;">📱 Mini App</div>
+          <div style="font-size: 12px; color: var(--muted);">Provider registration + claim filing via World App mobile browser. World ID MiniKit integration.</div>
+        </div>
+        <div class="card stagger" style="padding: 16px;">
+          <div style="font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 4px;">🔎 Tenderly Explorer</div>
+          <div style="font-size: 12px; color: var(--muted);">All CRE transactions publicly verifiable. No wallet needed to inspect on-chain state.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 10: TECH STACK ═══ -->
+  <div class="slide slide-below" data-slide="9" data-notes="Full-stack Web3 project: Foundry contracts with 22 tests, 4 CRE workflow handlers spanning 2 chains, Next.js dashboard with wagmi and RainbowKit, plus a World Mini App for mobile. Every layer is integrated end-to-end — from identity verification to automated breach enforcement.">
+    <span class="slide-label stagger">Tech Stack</span>
+    <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">Built With</h2>
+    <div class="tech-grid stagger" style="margin-top: 32px;">
+      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(55,91,210,0.12);">⚡</div>Chainlink CRE SDK</div>
+      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(239,68,68,0.12);">🔨</div>Foundry</div>
+      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(139,92,246,0.12);">🧠</div>Gemini 2.0 Flash</div>
+      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(74,222,128,0.12);">🌐</div>World ID / MiniKit</div>
+      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(245,158,11,0.12);">🧪</div>Tenderly VNets</div>
+      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(56,189,248,0.12);">⚛️</div>Next.js</div>
+      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(255,255,255,0.06);">🔗</div>wagmi + viem</div>
+      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(99,102,241,0.12);">🌈</div>RainbowKit</div>
+      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(255,255,255,0.06);">📱</div>World Mini App SDK</div>
+    </div>
+    <div class="grid-3 stagger" style="margin-top: 24px; max-width: 800px;">
+      <div class="card stagger" style="padding: 16px; text-align: center;">
+        <div style="font-family: 'Clash Display'; font-size: 28px; font-weight: 700; color: #fff;">22</div>
+        <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Contract Tests</div>
+      </div>
+      <div class="card stagger" style="padding: 16px; text-align: center;">
+        <div style="font-family: 'Clash Display'; font-size: 28px; font-weight: 700; color: #fff;">4</div>
+        <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">CRE Handlers</div>
+      </div>
+      <div class="card stagger" style="padding: 16px; text-align: center;">
+        <div style="font-family: 'Clash Display'; font-size: 28px; font-weight: 700; color: #fff;">2</div>
+        <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Chains</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 11: THANK YOU ═══ -->
+  <div class="slide slide-below" data-slide="10" data-notes="Thank you! OathLayer demonstrates that CRE can power autonomous compliance infrastructure for real-world assets — combining identity, AI prediction, and automated enforcement in a single system. All code is open source, all transactions are verifiable on Tenderly Explorer.">
+    <img src="./logo-erased.png" alt="OathLayer" class="title-logo stagger" style="width: 64px; height: 64px;">
+    <h2 class="title-name stagger" style="font-size: clamp(36px, 5vw, 56px);">OathLayer</h2>
+    <p class="slide-subtitle stagger" style="margin-top: 8px;">Autonomous SLA enforcement, powered by Chainlink CRE.</p>
+    <div class="links-row stagger" style="margin-top: 32px;">
+      <a href="https://github.com/oathlayer-protocol/oathkeeper" class="link-btn secondary" target="_blank">GitHub</a>
+      <a href="https://dashboard.tenderly.co/robbyn/project/testnet/5c780e4f-4df5-4a50-b221-2342cd4b713e" class="link-btn secondary" target="_blank">Tenderly Explorer</a>
+      <a href="/dashboard" class="link-btn primary">Live Dashboard →</a>
+    </div>
+    <div style="margin-top: 48px; text-align: center;" class="stagger">
+      <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">Built for</div>
+      <div style="font-size: 15px; font-weight: 600; color: #fff;">Chainlink CONVERGENCE Hackathon</div>
+      <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">March 2026</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ SPEAKER NOTES BAR ═══ -->
+<div class="notes-bar">
+  <div class="notes-text" id="notesText"></div>
+</div>
+</div>
+
+<script>
+(function() {
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  const progress = document.getElementById('progress');
+  const currentEl = document.getElementById('currentSlide');
+  const totalEl = document.getElementById('totalSlides');
+  const notesEl = document.getElementById('notesText');
+  let current = 0;
+  let transitioning = false;
+
+  totalEl.textContent = total;
+
+  function updateNotes(index) {
+    const note = slides[index].getAttribute('data-notes') || '';
+    notesEl.style.opacity = '0';
+    setTimeout(() => {
+      notesEl.innerHTML = note;
+      notesEl.style.opacity = '1';
+    }, 200);
+  }
+
+  function goTo(index) {
+    if (index < 0 || index >= total || index === current || transitioning) return;
+    transitioning = true;
+
+    const goingForward = index > current;
+
+    // Remove active from current slide, position it off-screen
+    slides[current].classList.remove('active');
+    slides[current].classList.remove('slide-below', 'slide-above');
+    slides[current].classList.add(goingForward ? 'slide-above' : 'slide-below');
+
+    // Position new slide on the correct side first (no transition)
+    slides[index].style.transition = 'none';
+    slides[index].classList.remove('slide-above', 'slide-below');
+    slides[index].classList.add(goingForward ? 'slide-below' : 'slide-above');
+
+    // Force reflow
+    slides[index].offsetHeight;
+
+    // Now animate it in
+    slides[index].style.transition = '';
+    slides[index].classList.remove('slide-below', 'slide-above');
+    slides[index].classList.add('active');
+
+    current = index;
+    currentEl.textContent = current + 1;
+    progress.style.width = ((current + 1) / total * 100) + '%';
+    updateNotes(current);
+
+    setTimeout(() => { transitioning = false; }, 500);
+  }
+
+  // Init notes for first slide
+  updateNotes(0);
+
+  // Keyboard
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault();
+      goTo(current + 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      goTo(current - 1);
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      goTo(0);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      goTo(total - 1);
+    }
+  });
+
+  // Click to advance (left half = prev, right half = next)
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('a')) return;
+    if (e.target.closest('.notes-bar')) return;
+    const x = e.clientX;
+    if (x > window.innerWidth * 0.5) {
+      goTo(current + 1);
+    } else {
+      goTo(current - 1);
+    }
+  });
+
+  // Touch swipe
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', (e) => {
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+      diff > 0 ? goTo(current + 1) : goTo(current - 1);
+    }
+  });
+
+  // Wheel
+  let wheelTimeout;
+  document.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    clearTimeout(wheelTimeout);
+    wheelTimeout = setTimeout(() => {
+      if (e.deltaY > 30) goTo(current + 1);
+      else if (e.deltaY < -30) goTo(current - 1);
+    }, 80);
+  }, { passive: false });
+
+  // Init
+  progress.style.width = (1 / total * 100) + '%';
+})();
+</script>
+
+</body>
+</html>
