@@ -22,9 +22,8 @@ export function useDashboardData() {
     try {
       const data = await fetchDashboardData();
       setSlas(data.slas.items);
-      // Sort desc by blockNumber client-side (Ponder bigint orderBy is unreliable)
-      setBreaches([...data.breachs.items].sort((a, b) => Number(BigInt(b.blockNumber) - BigInt(a.blockNumber))));
-      setWarnings([...data.breachWarnings.items].sort((a, b) => Number(BigInt(b.blockNumber) - BigInt(a.blockNumber))));
+      setBreaches(data.breachs.items);
+      setWarnings(data.breachWarnings.items);
       setError(null);
     } catch (e) {
       setError((e as Error).message);
@@ -42,7 +41,7 @@ export function useDashboardData() {
   // Derived values matching what the dashboard currently computes
   const activeSLAs = slas.filter((s) => s.active).length;
   const totalBonded = slas.reduce(
-    (sum, s) => sum + (Number(s.bondAmount) - Number(s.totalSlashed)) / 1e18,
+    (sum, s) => sum + Number(s.bondAmount) / 1e18,
     0
   );
   const breachCount = breaches.length;

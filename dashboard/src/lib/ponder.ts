@@ -82,13 +82,13 @@ export async function fetchDashboardData() {
         createdAt blockNumber
       }
     }
-    breachs {
+    breachs(orderBy: "timestamp", orderDirection: "desc") {
       items {
         id slaId provider uptimeBps penaltyAmount
         blockNumber transactionHash
       }
     }
-    breachWarnings {
+    breachWarnings(orderBy: "timestamp", orderDirection: "desc") {
       items {
         id slaId riskScore prediction tally summary penalized
         blockNumber transactionHash

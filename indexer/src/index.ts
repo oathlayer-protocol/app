@@ -82,7 +82,7 @@ ponder.on("SLAEnforcement:SLACreated", async ({ event, context }) => {
 // --- SLA Breached ---
 
 ponder.on("SLAEnforcement:SLABreached", async ({ event, context }) => {
-  const { db } = context;
+  const { db, client } = context;
   const ts = new Date(Number(event.block.timestamp) * 1000);
   const id = `${event.transaction.hash}-${event.log.logIndex}`;
 
@@ -97,10 +97,38 @@ ponder.on("SLAEnforcement:SLABreached", async ({ event, context }) => {
     transactionHash: event.transaction.hash,
   });
 
-  // Update SLA aggregate state
+  // Re-read current bondAmount from contract (decremented by penaltyAmount on-chain)
+  const slaData = await client.readContract({
+    address: event.log.address,
+    abi: [
+      {
+        inputs: [{ type: "uint256" }],
+        name: "slas",
+        outputs: [
+          { name: "provider", type: "address" },
+          { name: "tenant", type: "address" },
+          { name: "serviceName", type: "string" },
+          { name: "bondAmount", type: "uint256" },
+          { name: "responseTimeHrs", type: "uint256" },
+          { name: "minUptimeBps", type: "uint256" },
+          { name: "penaltyBps", type: "uint256" },
+          { name: "breachCount", type: "uint256" },
+          { name: "active", type: "bool" },
+        ],
+        stateMutability: "view",
+        type: "function",
+      },
+    ] as const,
+    functionName: "slas",
+    args: [event.args.slaId],
+  });
+
+  // Update SLA aggregate state with current on-chain bond
   await db
     .update(sla, { id: `${event.args.slaId}` })
     .set((row) => ({
+      bondAmount: slaData[3].toString(),
+      active: slaData[8],
       breachCount: row.breachCount + 1,
       totalSlashed: (BigInt(row.totalSlashed) + event.args.penaltyAmount).toString(),
       lastUpdated: ts,
