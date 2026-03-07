@@ -103,7 +103,24 @@ async function callGroqAgent(systemPrompt: string, userPrompt: string, temperatu
   if (!content) throw new Error('Groq returned empty response');
 
   const parsed = JSON.parse(content);
-  const votes: any[] = Array.isArray(parsed) ? parsed : Array.isArray(parsed.votes) ? parsed.votes : Array.isArray(parsed.results) ? parsed.results : [];
+  console.log(`[Tribunal] Raw Groq response: ${content.slice(0, 300)}`);
+
+  // Handle: array, {votes:[...]}, {results:[...]}, or single object {slaId, vote, ...}
+  let votes: any[];
+  if (Array.isArray(parsed)) {
+    votes = parsed;
+  } else if (Array.isArray(parsed.votes)) {
+    votes = parsed.votes;
+  } else if (Array.isArray(parsed.results)) {
+    votes = parsed.results;
+  } else if (parsed.slaId !== undefined || parsed.vote !== undefined) {
+    // Single object response (common for single-SLA queries)
+    votes = [parsed];
+  } else {
+    // Try to find any array value in the response
+    const arrKey = Object.keys(parsed).find(k => Array.isArray(parsed[k]));
+    votes = arrKey ? parsed[arrKey] : [];
+  }
 
   return votes.map((v: any) => {
     const isNested = typeof v.vote === 'object' && v.vote !== null;
@@ -111,7 +128,7 @@ async function callGroqAgent(systemPrompt: string, userPrompt: string, temperatu
     const rawConf: number = isNested ? v.vote.confidence : v.confidence;
     const rawReason: string = isNested ? v.vote.reasoning : v.reasoning;
     return {
-      slaId: Number(v.slaId),
+      slaId: Number(v.slaId ?? v.sla_id ?? 0),
       vote: {
         vote: (['BREACH', 'WARNING', 'NO_BREACH'].includes(rawVote) ? rawVote : 'NO_BREACH') as AgentVote['vote'],
         confidence: Math.max(0, Math.min(1, Number(rawConf) || 0.5)),
@@ -487,13 +504,32 @@ app.post('/demo-warning', requireAdminAuth, async (req: Request, res: Response) 
   }
 });
 
-// POST /reset — reset all uptime to healthy
-app.post('/reset', requireAdminAuth, (_req: Request, res: Response) => {
+// POST /reset — reset all uptime to healthy + fast-forward past cooldowns
+app.post('/reset', requireAdminAuth, async (_req: Request, res: Response) => {
   globalUptime = 99.9;
   Object.keys(providerUptime).forEach(k => delete providerUptime[k]);
   Object.keys(providerHistory).forEach(k => delete providerHistory[k]);
-  console.log('[MockAPI] Reset all uptime and history to defaults');
-  res.json({ ok: true, message: 'All uptime and history reset' });
+
+  // Fast-forward Tenderly VNet time past cooldowns (25h > 24h breach + 4h warning)
+  if (RPC_URL) {
+    try {
+      await fetch(RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'evm_increaseTime', params: ['0x15F90'], id: 1 }), // 25 hours
+      });
+      await fetch(RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'evm_mine', params: [], id: 2 }),
+      });
+      console.log('[MockAPI] Reset + fast-forwarded VNet 25h past cooldowns');
+    } catch (e) {
+      console.log('[MockAPI] Reset (time warp failed, cooldowns may still apply)');
+    }
+  }
+
+  res.json({ ok: true, message: 'All uptime and history reset, cooldowns cleared' });
 });
 
 const PORT = process.env.PORT || 3001;
