@@ -556,6 +556,33 @@ app.post('/demo-claim', requireAdminAuth, async (req: Request, res: Response) =>
   }
 });
 
+// POST /time-warp — advance VNet time (for cooldown testing)
+// Body: { hours?: number } — default 25h
+app.post('/time-warp', requireAdminAuth, async (req: Request, res: Response) => {
+  if (!RPC_URL) {
+    res.status(500).json({ error: 'RPC_URL not configured' });
+    return;
+  }
+  const { hours = 25 } = req.body as { hours?: number };
+  const seconds = Math.round(hours * 3600);
+  try {
+    await fetch(RPC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'evm_increaseTime', params: [`0x${seconds.toString(16)}`], id: 1 }),
+    });
+    await fetch(RPC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'evm_mine', params: [], id: 2 }),
+    });
+    console.log(`[MockAPI] Time warped ${hours}h forward`);
+    res.json({ ok: true, message: `Advanced VNet time ${hours}h` });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Time warp failed', detail: err.message });
+  }
+});
+
 // POST /reset — reset all uptime to healthy + fast-forward past cooldowns
 app.post('/reset', requireAdminAuth, async (_req: Request, res: Response) => {
   globalUptime = 99.9;

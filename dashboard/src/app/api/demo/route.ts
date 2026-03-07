@@ -29,6 +29,10 @@ export async function POST(req: Request) {
         description: params.description ?? "Downtime incident — provider unresponsive",
       },
     },
+    "time-warp": {
+      path: "/time-warp",
+      body: { hours: params.hours ?? 25 },
+    },
     reset: { path: "/reset" },
   };
 
