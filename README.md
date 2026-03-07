@@ -2,7 +2,7 @@
 
 **Autonomous SLA Enforcement for Tokenized Real-World Assets**
 
-Chainlink CRE monitors uptime, Gemini Flash predicts breaches before they happen, and penalties execute on-chain — all without human intervention. Provider identity gated by World ID.
+Chainlink CRE monitors uptime, an AI Tribunal Council (3-agent adversarial system via Groq/Llama 3.3) predicts breaches before they happen, and penalties execute on-chain — all without human intervention. Provider identity gated by World ID.
 
 **Hackathon:** CONVERGENCE (Chainlink) — Deadline: March 27, 2026
 **Tracks:** Risk & Compliance ($16K) · Privacy ($16K) · CRE & AI ($17K)
@@ -17,8 +17,8 @@ World Chain (4801)          CRE Workflows              Sepolia (Tenderly VNet)
 ┌──────────────────┐   ┌─────────────────────┐   ┌──────────────────┐
 │ WorldChainRegistry│   │ 1. Cron (15min)     │   │ SLAEnforcement   │
 │                  │   │    → fetch uptime    │   │                  │
-│ register() ──────┼──→│    → Gemini Flash    │──→│ recordBreach()   │
-│  ProviderReg     │   │    → breach predict  │   │ recordWarn()     │
+│ register() ──────┼──→│    → AI Tribunal     │──→│ recordBreach()   │
+│  ProviderReg     │   │    → 3-agent council │   │ recordWarn()     │
 │  Requested       │   │                     │   │                  │
 │                  │   │ 2. ProviderRegReq   │   │ compliance gate  │
 │                  │   │    → ConfidHTTP KYC ─┼──→│ setCompliance()  │
@@ -48,22 +48,33 @@ Dashboard (Next.js)          Mini App (World App)      Mock APIs (:3001)
 | **Cron trigger** | Scans all active SLAs every 15 minutes for compliance |
 | **EVM Log trigger** | Reacts immediately to `ClaimFiled`, `ProviderRegistrationRequested`, `ArbitratorRegistrationRequested` events |
 | **ConfidentialHTTPClient** | Encrypted KYC/compliance checks via TEE enclaves — provider PII never visible to DON nodes |
-| **Secrets** | `GEMINI_API_KEY`, `COMPLIANCE_API_KEY`, `UPTIME_API_KEY` via threshold-encrypted vault |
+| **Secrets** | `GROQ_API_KEY`, `COMPLIANCE_API_KEY`, `UPTIME_API_KEY` via threshold-encrypted vault |
 | **Cross-chain relay** | World Chain → Sepolia registration relay via trusted CRE forwarder pattern |
 
-## How AI is Used
+## How AI is Used — Tribunal Council
 
-- **Gemini 2.0 Flash** analyzes uptime trends across all active SLAs in a single batched prompt
-- Returns structured `{ riskScore, prediction }` via `responseSchema` (deterministic JSON mode)
-- API key protected via `ConfidentialHTTPClient` — DON nodes cannot see the key
-- `riskScore > 70` triggers on-chain `BreachWarning` event with prediction text
+OathLayer uses a **3-agent adversarial AI tribunal** to prevent false positives from a single model:
+
+| Agent | Role | Bias |
+|-------|------|------|
+| **Risk Analyst** | Evaluates raw metrics against SLA thresholds | Data-driven, neutral |
+| **Provider Advocate** | Defends providers — finds mitigating factors, temporary dips | Biased toward protecting providers |
+| **Enforcement Judge** | Weighs both arguments, casts tiebreaker vote (1.5x weight) | Balanced |
+
+- **Model:** Groq (Llama 3.3 70B) via `ConfidentialHTTPClient` — API key protected in TEE
+- **Flow:** Sequential deliberation: Analyst → Advocate (sees Analyst output) → Judge (sees both)
+- **Voting:** Unanimous BREACH → slash bond. Majority → warning. Unanimous clear → skip.
+- **On-chain output:** `[2-1 BREACH] Analyst: sustained degradation; Advocate: maintenance window; Judge: evidence sufficient`
+- **Graceful degradation:** If an agent fails, remaining agents still vote
+- **Historical context:** Provider Advocate receives 7-day uptime history for trend-based defense arguments
 - 4-hour cooldown per SLA prevents warning spam
 
 ## How World ID is Used
 
-- **Provider registration** — World ID verification prevents Sybil SLA providers (Orb in production, Device for hackathon testing)
+- **Provider registration** — A provider is a **company/organization** (cloud infra, data center, hosting service) represented by a wallet. World ID verifies that a **unique human** controls the provider wallet — preventing one entity from registering multiple fake providers to game the system (Sybil resistance). It does not verify *who* the person is (CEO, CTO, ops), only that they are real and unique.
 - **Arbitrator access** — only verified humans can uphold or overturn breaches
 - **Cross-chain** — ZK proof verified on World Chain, relayed to Sepolia via CRE
+- **Production note:** Provider wallets would typically be multisigs (Safe) with World ID on the initial signer. Hackathon uses single EOA.
 
 ## How Tenderly is Used
 
@@ -146,10 +157,8 @@ forge script script/DeployWorldChain.s.sol --rpc-url $WORLD_CHAIN_RPC --broadcas
 cd workflow
 npm install
 
-# Create secrets
-cre secrets create UPTIME_API_KEY --value "demo-key"
-cre secrets create COMPLIANCE_API_KEY --value "your-key"
-cre secrets create GEMINI_API_KEY --value "your-gemini-key"
+# Secrets are loaded from workflow/.env during simulation
+# For deployed workflows, use: cre secrets create secrets.yaml
 
 # Simulate
 cre workflow simulate --verbose --broadcast
@@ -212,7 +221,7 @@ npm run dev  # runs on :3002
 | `SLACreated` | New SLA agreement |
 | `ClaimFiled` | Tenant files claim → triggers reactive CRE scan |
 | `SLABreached` | CRE detects uptime below threshold |
-| `BreachWarning` | Gemini predicts riskScore > 70 |
+| `BreachWarning` | AI Tribunal council confidence > threshold |
 | `ComplianceCheckPassed` | Provider approved via ConfidentialHTTPClient |
 | `ComplianceCheckFailed` | Provider rejected |
 
@@ -230,7 +239,7 @@ This pattern demonstrates CRE as a general-purpose cross-chain bridge for identi
 
 | File | Chainlink Usage |
 |---|---|
-| [`workflow/workflow.ts`](./workflow/workflow.ts) | CRE SDK — cron trigger, EVM log triggers, ConfidentialHTTPClient, Secrets, Gemini AI integration |
+| [`workflow/workflow.ts`](./workflow/workflow.ts) | CRE SDK — cron trigger, EVM log triggers, ConfidentialHTTPClient, Secrets, AI Tribunal (Groq/Llama 3.3) |
 | [`contracts/src/SLAEnforcement.sol`](./contracts/src/SLAEnforcement.sol) | `AggregatorV3Interface` (ETH/USD price feed), `onlyCREForwarder` access control |
 | [`contracts/src/WorldChainRegistry.sol`](./contracts/src/WorldChainRegistry.sol) | Cross-chain registration proxy — emits events consumed by CRE EVM log trigger |
 
@@ -242,7 +251,7 @@ This pattern demonstrates CRE as a general-purpose cross-chain bridge for identi
 2. **Register provider** (`/provider/register`) — Connect wallet → World ID verify → bond ETH → compliance check fires automatically (CRE → ConfidentialHTTPClient → mock API) → APPROVED
 3. **Create SLA** (`/sla/create`) — Compliance-gated form: set uptime threshold, penalty %, bond amount
 4. **Dashboard** (`/dashboard`) — Live stats: active SLAs, total bonded, AI warnings, breaches
-5. **AI prediction** — CRE cron fires → Gemini analyzes uptime → BreachWarning if risk > 70
+5. **AI Tribunal** — CRE cron fires → 3 agents deliberate (Risk Analyst → Provider Advocate → Judge) → BreachWarning with tally
 6. **Trigger breach** — `POST /set-uptime {"uptime": 98.0}` → CRE detects → `recordBreach()` → bond slashed
 7. **File claim** (`/claims` or Mini App) — Tenant submits maintenance request → triggers reactive CRE scan
 8. **Arbitrate** (`/arbitrate`) — World ID gated: uphold or overturn breach
@@ -288,7 +297,7 @@ cd workflow && cre workflow simulate --verbose --broadcast
 |---|---|
 | Contracts | Foundry (Solidity ^0.8.20) |
 | Automation | Chainlink CRE SDK (TypeScript) |
-| AI | Gemini 2.0 Flash (structured output, TEE-encrypted) |
+| AI | Groq / Llama 3.3 70B — 3-agent Tribunal Council (TEE-encrypted via ConfidentialHTTPClient) |
 | Price Feeds | Chainlink AggregatorV3Interface (ETH/USD) |
 | Privacy | CRE ConfidentialHTTPClient (TEE enclaves) |
 | Identity | World ID / IDKit v1 + MiniKit |

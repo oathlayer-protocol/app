@@ -8,9 +8,9 @@ Imagine a **cloud hosting company** (AWS, Hetzner, etc.) that tokenizes its infr
 
 | Actor | Who they are | What they do |
 |-------|-------------|-------------|
-| **Provider** | Cloud/infra company selling services | Registers identity, bonds collateral, creates SLAs |
+| **Provider** | Cloud/infra company (e.g. data center, hosting service) — represented by a wallet. World ID verifies a unique human controls it, not who they are | Registers identity, bonds collateral, creates SLAs |
 | **Tenant** | Business buying the service | Receives SLA guarantees, files claims if service degrades |
-| **CRE (Chainlink)** | Automated referee | Monitors uptime, predicts breaches, executes penalties |
+| **CRE (Chainlink)** | Automated referee | Monitors uptime, runs AI Tribunal, executes penalties |
 | **Arbitrator** | Verified human (World ID) | Can override/uphold breach decisions in disputes |
 
 ## Flow Explained
@@ -30,13 +30,16 @@ Imagine a **cloud hosting company** (AWS, Hetzner, etc.) that tokenizes its infr
 - Example: "I guarantee 99.9% uptime. If I breach, slash 10% of my 1 ETH bond"
 - **Why a user creates this:** It's a **trust signal**. A provider willing to lock up 1 ETH and accept automatic penalties is more credible than one who just says "trust me." Tenants can compare providers by bond size and terms.
 
-### 3. CRE Monitors (automatic — no user action)
+### 3. CRE Monitors — AI Tribunal Council (automatic — no user action)
 
-- Every 15 minutes, CRE cron job fetches uptime data for all active SLAs
-- Sends all uptime data to **Gemini Flash** in one batched prompt
-- Gemini returns `{ riskScore: 0-100, prediction: "text" }` for each SLA
-- If `riskScore > 70` → CRE writes a **BreachWarning** on-chain (the orange/red alerts on dashboard)
-- **This is predictive** — warns before the breach actually happens
+- Every 15 minutes, CRE cron job fetches uptime data + 7-day history for all active SLAs
+- Runs **3-agent AI Tribunal** sequentially via Groq (Llama 3.3 70B):
+  1. **Risk Analyst** — evaluates raw metrics, votes BREACH/WARNING/NO_BREACH
+  2. **Provider Advocate** — sees Analyst's assessment + history, argues for the provider
+  3. **Enforcement Judge** — sees both arguments, casts tiebreaker (1.5x weight)
+- Votes tallied: unanimous BREACH → slash, majority → warning, unanimous clear → skip
+- On-chain prediction includes tally: `[2-1 BREACH] Analyst: ...; Advocate: ...; Judge: ...`
+- **This is adversarial** — the Advocate's job is to catch false positives before a provider gets wrongfully slashed
 
 ### 4. Breach Detection & Auto-Slash (automatic)
 
@@ -65,7 +68,7 @@ Imagine a **cloud hosting company** (AWS, Hetzner, etc.) that tokenizes its infr
 | Scenario | Uptime | Result |
 |----------|--------|--------|
 | Healthy | 99.95% | Nothing happens. Bond untouched. |
-| Warning zone | 99.2% | Gemini scores risk 82 → BreachWarning event. Dashboard shows alert. No penalty yet. |
+| Warning zone | 99.2% | Tribunal votes 2-1 BREACH → BreachWarning event with council summary. Dashboard shows alert. No penalty yet. |
 | Breached | 96.5% | Uptime < 99.9% threshold → `recordBreach()` → 0.1 ETH slashed → bond drops to 0.9 ETH |
 | Second breach | 94.0% | Another 0.1 ETH slashed → bond drops to 0.8 ETH |
 | Bond depleted | repeated | Eventually bond hits 0 → SLA deactivated, provider must re-bond |
@@ -110,15 +113,15 @@ Say: *"Simulating an outage — the provider's uptime just dropped to 94%."*
 ```bash
 cd workflow && cre workflow simulate --verbose --broadcast
 ```
-Say: *"Chainlink CRE is now doing 3 things: fetching uptime data, sending it to Gemini Flash for risk prediction, and if the threshold is breached — calling recordBreach on-chain automatically."*
+Say: *"Chainlink CRE is now doing 3 things: fetching uptime data, running it through a 3-agent AI Tribunal — Risk Analyst, Provider Advocate, and Enforcement Judge deliberate adversarially — and if the tribunal votes breach, the bond is slashed on-chain automatically."*
 
 **Step 4 — Watch the dashboard update**
 - Switch back to browser. Within 5 seconds the dashboard polls and shows:
-  - New **BreachWarning** card with AI prediction text + risk score
+  - New **AI Tribunal** card with vote tally badge (e.g. `[2-1 BREACH]`) + agent reasoning summary
   - **SLABreached** row in the breach table — uptime %, penalty amount, tx hash
   - Bond health bar drops (e.g., 0.1 → 0.09 ETH)
   - Breach counter increments
-- Say: *"No human intervention. The AI predicted it, CRE detected it, and the bond was slashed — all in one workflow cycle."*
+- Say: *"No human intervention. Three AI agents deliberated — the Risk Analyst flagged it, the Provider Advocate tried to defend, and the Judge sided with the evidence. Bond slashed automatically."*
 
 **Step 5 — Reset for clean state (optional)**
 ```bash
@@ -145,8 +148,8 @@ curl -X POST http://localhost:3001/reset \
 
 ### Act 6: Technical Depth (30s — for Q&A or if judges are technical)
 
-- **5 CRE capabilities in one workflow:** Cron trigger, EVM Log trigger, ConfidentialHTTPClient (compliance + Gemini), Secrets, cross-chain relay (World Chain → Sepolia)
-- **AI is predictive, not just reactive:** Gemini Flash scores risk 0-100, warns before breach happens
+- **5 CRE capabilities in one workflow:** Cron trigger, EVM Log trigger, ConfidentialHTTPClient (compliance + AI Tribunal), Secrets, cross-chain relay (World Chain → Sepolia)
+- **AI Tribunal is adversarial, not just predictive:** 3 agents with different biases deliberate — prevents single-model hallucination from wrongfully slashing a provider's bond
 - **Cross-chain:** Provider registers on World Chain (World ID native), SLA enforcement on Sepolia — CRE bridges the gap
 
 ### Quick Reference — Demo Control Commands
