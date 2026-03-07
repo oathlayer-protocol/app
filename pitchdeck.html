@@ -719,7 +719,7 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
     <div style="margin-top: 40px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;" class="stagger">
       <span class="badge" style="font-size: 11px;">Chainlink CRE</span>
       <span class="badge" style="font-size: 11px;">World ID</span>
-      <span class="badge" style="font-size: 11px;">Gemini Flash</span>
+      <span class="badge" style="font-size: 11px;">AI Tribunal</span>
       <span class="badge" style="font-size: 11px;">Tenderly</span>
     </div>
   </div>
@@ -754,7 +754,7 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
   </div>
 
   <!-- ═══ SLIDE 3: SOLUTION ═══ -->
-  <div class="slide slide-below" data-slide="2" data-notes="OathLayer solves this with three pillars: <strong>bonded collateral</strong> so providers have skin in the game, <strong>CRE automation</strong> that monitors 24/7 without human intervention, and <strong>AI prediction</strong> that warns about breaches before they happen. Penalties execute automatically — no lawyers, no delays.">
+  <div class="slide slide-below" data-slide="2" data-notes="OathLayer solves this with three pillars: <strong>bonded collateral</strong> so providers have skin in the game, <strong>CRE automation</strong> that monitors 24/7 without human intervention, and an <strong>AI Tribunal Council</strong> — 3 adversarial agents that deliberate before any slashing occurs. Penalties execute automatically — no lawyers, no delays.">
     <span class="slide-label stagger">The Solution</span>
     <h2 class="slide-title stagger">AI-Powered, On-Chain<br>SLA Enforcement</h2>
     <p class="slide-subtitle stagger">Providers bond collateral. CRE monitors 24/7. AI predicts breaches. Penalties auto-execute.</p>
@@ -771,14 +771,14 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
       </div>
       <div class="card pillar stagger">
         <div class="icon-box purple" style="margin: 0 auto 16px;">🧠</div>
-        <h3>AI Prediction</h3>
-        <p>Gemini Flash analyzes trends and predicts breaches before they happen. Early warnings protect tenants.</p>
+        <h3>AI Tribunal</h3>
+        <p>3 adversarial AI agents — Risk Analyst, Provider Advocate, Enforcement Judge — deliberate before any slashing. No single-model false positives.</p>
       </div>
     </div>
   </div>
 
   <!-- ═══ SLIDE 4: HOW IT WORKS ═══ -->
-  <div class="slide slide-below" data-slide="3" data-notes="Walk through the full lifecycle: A provider registers with World ID (Sybil resistance), creates an SLA bonding ETH as collateral, then CRE cron jobs monitor uptime every 15 minutes. Gemini Flash scores breach risk in real-time. If uptime drops below the SLA threshold, the bond is automatically slashed and the tenant is compensated.">
+  <div class="slide slide-below" data-slide="3" data-notes="Walk through the full lifecycle: A provider (cloud/infra company) registers with World ID — proving a unique human controls the wallet (Sybil resistance, not KYC). They create an SLA bonding ETH as collateral. CRE cron jobs monitor uptime every 15 minutes, then the AI Tribunal — 3 agents with competing biases — deliberates. If the tribunal votes breach, the bond is automatically slashed.">
     <span class="slide-label stagger">How It Works</span>
     <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">End-to-End Enforcement Flow</h2>
     <div class="flow stagger" style="margin-top: 40px;">
@@ -802,8 +802,8 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
       <div class="flow-arrow stagger">→</div>
       <div class="flow-step stagger">
         <div class="step-num">4</div>
-        <div class="step-label">AI Predicts</div>
-        <div class="step-desc">Gemini Flash scores breach risk</div>
+        <div class="step-label">AI Tribunal</div>
+        <div class="step-desc">3 agents deliberate on breach risk</div>
       </div>
       <div class="flow-arrow stagger">→</div>
       <div class="flow-step stagger">
@@ -821,7 +821,7 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
   </div>
 
   <!-- ═══ SLIDE 5: ARCHITECTURE ═══ -->
-  <div class="slide slide-below" data-slide="4" data-notes="Three-system architecture spanning two chains plus the CRE DON. <strong>World Chain</strong> handles identity via World ID ZK proofs. <strong>CRE Workflows</strong> bridge identity cross-chain, run cron monitoring, and call Gemini for AI predictions. <strong>Sepolia VNet</strong> hosts the enforcement contract with bond management and breach recording.">
+  <div class="slide slide-below" data-slide="4" data-notes="Three-system architecture spanning two chains plus the CRE DON. <strong>World Chain</strong> handles identity via World ID ZK proofs. <strong>CRE Workflows</strong> bridge identity cross-chain, run cron monitoring, and orchestrate the AI Tribunal Council (3 adversarial agents). <strong>Sepolia VNet</strong> hosts the enforcement contract with bond management and breach recording.">
     <span class="slide-label stagger">Architecture</span>
     <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">Cross-Chain System Design</h2>
     <div class="arch-grid stagger" style="margin-top: 36px;">
@@ -846,7 +846,7 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
         <div class="arch-chain">Chainlink DON</div>
         <ul>
           <li>Cron (15min scans)</li>
-          <li>Gemini Flash AI</li>
+          <li>AI Tribunal Council</li>
           <li>ConfidHTTP (TEE)</li>
           <li>Event reactions</li>
         </ul>
@@ -897,7 +897,7 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
         <div class="cre-num">04</div>
         <div class="icon-box amber" style="width: 32px; height: 32px; font-size: 14px; margin-bottom: 10px;">🗝️</div>
         <h3>Secrets Vault</h3>
-        <p>Gemini, Compliance, Uptime API keys threshold-encrypted</p>
+        <p>AI, Compliance, Uptime API keys threshold-encrypted</p>
       </div>
       <div class="card cre-card stagger">
         <div class="cre-num">05</div>
@@ -909,52 +909,38 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
   </div>
 
   <!-- ═══ SLIDE 7: AI INTEGRATION ═══ -->
-  <div class="slide slide-below" data-slide="6" data-notes="Gemini 2.0 Flash receives batched uptime data for all active SLAs in a single prompt. It returns structured JSON with a risk score (0-100) and a human-readable prediction. Scores above 70 trigger an on-chain BreachWarning event with a 4-hour cooldown per SLA. The API key is protected inside CRE's TEE enclave — DON nodes never see it.">
+  <div class="slide slide-below" data-slide="6" data-notes="The AI Tribunal Council prevents false positives from single-model hallucinations. Three agents with different biases deliberate sequentially: the Risk Analyst evaluates data objectively, the Provider Advocate argues for the provider using historical trends, and the Enforcement Judge weighs both arguments before casting the tiebreaker vote. Unanimous breach triggers slashing; majority triggers a warning. The model is swappable — architecture is provider-agnostic.">
     <span class="slide-label stagger">AI Integration</span>
-    <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">Predictive Breach Detection</h2>
-    <div class="ai-flow stagger" style="margin-top: 32px;">
-      <div class="card stagger" style="flex: 1; padding: 20px;">
-        <h3 style="font-size: 14px; color: #fff; margin-bottom: 12px;">Input: Uptime Data</h3>
-        <div style="display: flex; flex-direction: column; gap: 6px;">
-          <div style="display: flex; justify-content: space-between; font-size: 12px;">
-            <span style="color: var(--muted); font-family: monospace;">SLA #0</span>
-            <span style="color: var(--green);">99.2%</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: 12px;">
-            <span style="color: var(--muted); font-family: monospace;">SLA #1</span>
-            <span style="color: var(--amber);">97.8%</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: 12px;">
-            <span style="color: var(--muted); font-family: monospace;">SLA #2</span>
-            <span style="color: var(--red);">95.1%</span>
-          </div>
-        </div>
+    <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">AI Tribunal Council</h2>
+    <p class="slide-subtitle stagger">3 adversarial agents deliberate before any slashing occurs</p>
+    <div class="ai-flow stagger" style="margin-top: 28px;">
+      <div class="card stagger" style="flex: 1; padding: 20px; text-align: center;">
+        <div style="font-size: 24px; margin-bottom: 8px;">📊</div>
+        <h3 style="font-size: 14px; color: #fff; margin-bottom: 6px;">Risk Analyst</h3>
+        <p style="font-size: 11px; color: var(--muted-strong);">Data-driven, neutral. Evaluates metrics against SLA thresholds.</p>
+        <div style="margin-top: 10px; padding: 4px 10px; border-radius: 4px; background: rgba(239,68,68,0.1); color: #ef4444; font-size: 11px; display: inline-block;">BREACH · 0.85</div>
       </div>
-      <div class="ai-center stagger">🧠</div>
-      <div class="card stagger" style="flex: 1; padding: 20px;">
-        <h3 style="font-size: 14px; color: #fff; margin-bottom: 12px;">Output: Risk Scores</h3>
-        <div style="display: flex; flex-direction: column; gap: 6px;">
-          <div style="display: flex; justify-content: space-between; font-size: 12px; align-items: center;">
-            <span style="color: var(--muted);">SLA #0</span>
-            <span style="padding: 2px 8px; border-radius: 4px; background: rgba(74,222,128,0.1); color: #4ade80; font-size: 11px;">Low · 25</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: 12px; align-items: center;">
-            <span style="color: var(--muted);">SLA #1</span>
-            <span style="padding: 2px 8px; border-radius: 4px; background: rgba(245,158,11,0.1); color: #f59e0b; font-size: 11px;">Medium · 62</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: 12px; align-items: center;">
-            <span style="color: var(--muted);">SLA #2</span>
-            <span style="padding: 2px 8px; border-radius: 4px; background: rgba(239,68,68,0.1); color: #ef4444; font-size: 11px;">High · 85</span>
-          </div>
-        </div>
+      <div class="ai-center stagger" style="font-size: 16px;">→</div>
+      <div class="card stagger" style="flex: 1; padding: 20px; text-align: center;">
+        <div style="font-size: 24px; margin-bottom: 8px;">🛡️</div>
+        <h3 style="font-size: 14px; color: #fff; margin-bottom: 6px;">Provider Advocate</h3>
+        <p style="font-size: 11px; color: var(--muted-strong);">Biased to protect. Finds mitigating factors and false positive indicators.</p>
+        <div style="margin-top: 10px; padding: 4px 10px; border-radius: 4px; background: rgba(74,222,128,0.1); color: #4ade80; font-size: 11px; display: inline-block;">NO_BREACH · 0.60</div>
+      </div>
+      <div class="ai-center stagger" style="font-size: 16px;">→</div>
+      <div class="card stagger" style="flex: 1; padding: 20px; text-align: center;">
+        <div style="font-size: 24px; margin-bottom: 8px;">⚖️</div>
+        <h3 style="font-size: 14px; color: #fff; margin-bottom: 6px;">Enforcement Judge</h3>
+        <p style="font-size: 11px; color: var(--muted-strong);">Weighs both arguments. Tiebreaker vote with 1.5x weight.</p>
+        <div style="margin-top: 10px; padding: 4px 10px; border-radius: 4px; background: rgba(245,158,11,0.1); color: #f59e0b; font-size: 11px; display: inline-block;">WARNING · 0.70</div>
       </div>
     </div>
     <div class="grid-2 stagger" style="margin-top: 20px; max-width: 900px;">
       <div class="card stagger" style="padding: 16px;">
-        <div style="font-size: 12px; color: var(--muted-strong);"><strong style="color: #fff;">Gemini 2.0 Flash</strong> — Structured JSON output via responseSchema. Batched analysis of all SLAs in single prompt.</div>
+        <div style="font-size: 12px; color: var(--muted-strong);"><strong style="color: #fff;">Adversarial by Design</strong> — The Advocate's job is to argue against slashing. False positives from a single model can't wrongfully penalize providers.</div>
       </div>
       <div class="card stagger" style="padding: 16px;">
-        <div style="font-size: 12px; color: var(--muted-strong);"><strong style="color: #fff;">TEE Protected</strong> — API key encrypted via ConfidentialHTTPClient. DON nodes never see the Gemini key.</div>
+        <div style="font-size: 12px; color: var(--muted-strong);"><strong style="color: #fff;">TEE Protected</strong> — API keys encrypted via ConfidentialHTTPClient. Model-agnostic — swap any LLM provider without architecture changes.</div>
       </div>
     </div>
   </div>
@@ -1061,7 +1047,7 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
     <div class="tech-grid stagger" style="margin-top: 32px;">
       <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(55,91,210,0.12);">⚡</div>Chainlink CRE SDK</div>
       <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(239,68,68,0.12);">🔨</div>Foundry</div>
-      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(139,92,246,0.12);">🧠</div>Gemini 2.0 Flash</div>
+      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(139,92,246,0.12);">🧠</div>AI Tribunal Council</div>
       <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(74,222,128,0.12);">🌐</div>World ID / MiniKit</div>
       <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(245,158,11,0.12);">🧪</div>Tenderly VNets</div>
       <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(56,189,248,0.12);">⚛️</div>Next.js</div>
