@@ -24,6 +24,7 @@ const CONTRACT = process.env.SLA_CONTRACT_ADDRESS as `0x${string}` | undefined;
 const SLA_ABI = parseAbi([
   'function recordBreach(uint256 slaId, uint256 uptimeBps) external',
   'function recordBreachWarning(uint256 slaId, uint256 riskScore, string prediction) external',
+  'function fileClaim(uint256 slaId, string description) external',
   'function slas(uint256) view returns (address provider, address tenant, string serviceName, uint256 bondAmount, uint256 responseTimeHrs, uint256 minUptimeBps, uint256 penaltyBps, uint256 breachCount, bool active)',
   'function slaCount() view returns (uint256)',
 ]);
@@ -501,6 +502,57 @@ app.post('/demo-warning', requireAdminAuth, async (req: Request, res: Response) 
     res.json({ ok: true, message: `AI Tribunal warning for ${results.length} SLA(s)`, results });
   } catch (err: any) {
     res.status(500).json({ error: 'Failed', detail: err.message });
+  }
+});
+
+// POST /demo-claim — file a claim as tenant (impersonates tenant via Tenderly)
+app.post('/demo-claim', requireAdminAuth, async (req: Request, res: Response) => {
+  if (!publicClient || !CONTRACT || !RPC_URL) {
+    res.status(500).json({ error: 'Contract client not configured' });
+    return;
+  }
+
+  const { slaId = 0, description = 'Downtime incident — provider unresponsive for >2h' } = req.body as { slaId?: number; description?: string };
+
+  try {
+    // Read tenant address from SLA
+    const data = await publicClient.readContract({ address: CONTRACT, abi: SLA_ABI, functionName: 'slas', args: [BigInt(slaId)] });
+    const tenant = data[1] as `0x${string}`;
+
+    if (tenant === '0x0000000000000000000000000000000000000000') {
+      res.status(400).json({ error: `SLA #${slaId} has no tenant` });
+      return;
+    }
+
+    // Fund tenant via Tenderly (needs ETH for gas)
+    await fetch(RPC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'tenderly_setBalance', params: [tenant, '0xDE0B6B3A7640000'], id: 1 }),
+    });
+
+    // Tenderly VNet allows sending tx from any funded address without private key
+    const calldata = encodeFunctionData({ abi: SLA_ABI, functionName: 'fileClaim', args: [BigInt(slaId), description] });
+
+    const txRes = await fetch(RPC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0', method: 'eth_sendTransaction', id: 1,
+        params: [{ from: tenant, to: CONTRACT, data: calldata, gas: '0x100000' }],
+      }),
+    });
+    const txData = await txRes.json() as { result?: string; error?: { message: string } };
+
+    if (txData.error) {
+      res.status(500).json({ error: `Claim failed: ${txData.error.message}` });
+      return;
+    }
+
+    console.log(`[MockAPI] SLA #${slaId} — Claim filed as tenant ${tenant.slice(0, 10)}... tx: ${txData.result}`);
+    res.json({ ok: true, message: `Claim filed for SLA #${slaId}`, slaId, tenant, tx: txData.result });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to file claim', detail: err.message });
   }
 });
 

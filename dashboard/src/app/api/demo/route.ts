@@ -22,6 +22,13 @@ export async function POST(req: Request) {
         uptime: params.uptime ?? 97.0,
       },
     },
+    "demo-claim": {
+      path: "/demo-claim",
+      body: {
+        slaId: params.slaId ?? 0,
+        description: params.description ?? "Downtime incident — provider unresponsive",
+      },
+    },
     reset: { path: "/reset" },
   };
 

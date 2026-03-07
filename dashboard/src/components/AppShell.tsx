@@ -236,6 +236,14 @@ function DemoControls({ onExit }: { onExit: () => void }) {
                 {loading === "demo-warning" ? "Warning..." : "Warning Only (no slash)"}
               </button>
               <button
+                onClick={() => callDemo("demo-claim", { slaId: slaId === "all" ? 0 : parseInt(slaId) })}
+                disabled={!!loading}
+                className="w-full py-2 rounded-lg text-[12px] font-medium transition-colors disabled:opacity-40"
+                style={{ background: "rgba(55,91,210,0.1)", border: "1px solid rgba(55,91,210,0.2)", color: "var(--chainlink-light)" }}
+              >
+                {loading === "demo-claim" ? "Filing..." : "File Claim (as tenant)"}
+              </button>
+              <button
                 onClick={() => { setUptime("99.9"); callDemo("reset"); }}
                 disabled={!!loading}
                 className="w-full py-2 rounded-lg text-[12px] font-medium transition-colors disabled:opacity-40"
