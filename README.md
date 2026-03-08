@@ -6,6 +6,26 @@ OathLayer is a trustless SLA enforcement protocol where Chainlink CRE (Compute R
 
 **In short:** CRE watches. AI deliberates. Smart contracts enforce. Humans arbitrate.
 
+## Submission
+
+**1-line description:** Autonomous SLA enforcement for tokenized RWAs — CRE monitors, AI deliberates, contracts enforce.
+
+**Full description:**
+
+OathLayer is a trustless SLA enforcement protocol for tokenized real-world asset infrastructure. Today, when a cloud provider breaks their uptime SLA, the customer files a ticket, waits weeks, and maybe gets a service credit. OathLayer replaces that with automated, on-chain enforcement.
+
+**How it works:**
+
+1. Providers register with World ID verification (Sybil-resistant identity) and bond ETH as collateral
+2. Chainlink CRE monitors provider uptime every 15 minutes via cron trigger
+3. When metrics degrade, a 3-agent adversarial AI Tribunal (Risk Analyst, Provider Advocate, Enforcement Judge) deliberates using Groq/Llama 3.3 — all inference runs inside TEE enclaves via ConfidentialHTTPClient
+4. Unanimous breach verdict + uptime below SLA threshold → bond automatically slashed on-chain. No human intervention.
+5. Disputed penalties can be challenged through World ID-gated human arbitration
+
+The protocol uses 5 CRE capabilities (cron trigger, EVM log trigger, ConfidentialHTTPClient, Secrets, cross-chain relay), runs on two Tenderly Virtual TestNets with State Sync, and bridges World ID cross-chain from World Chain to Sepolia via CRE — enabling Sybil-resistant identity on chains where World ID isn't natively supported.
+
+---
+
 ## Live Deployments
 
 | Service | URL |
