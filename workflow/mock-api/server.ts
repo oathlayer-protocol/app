@@ -25,6 +25,8 @@ const SLA_ABI = parseAbi([
   'function recordBreach(uint256 slaId, uint256 uptimeBps) external',
   'function recordBreachWarning(uint256 slaId, uint256 riskScore, string prediction) external',
   'function fileClaim(uint256 slaId, string description) external',
+  'function registerArbitratorRelayed(address user, uint256 nullifierHash) external',
+  'function verifiedArbitrators(address) view returns (bool)',
   'function slas(uint256) view returns (address provider, address tenant, string serviceName, uint256 bondAmount, uint256 responseTimeHrs, uint256 minUptimeBps, uint256 penaltyBps, uint256 breachCount, bool active)',
   'function slaCount() view returns (uint256)',
 ]);
@@ -160,17 +162,22 @@ function tallyVotes(slaId: number, analyst?: AgentVote, advocate?: AgentVote, ju
   }
   const councilConfidence = weightTotal > 0 ? weightedSum / weightTotal : 0;
 
+  // "For" = votes in favor of action (BREACH or WARNING), "Against" = NO_BREACH
+  const forVotes = breachVotes.length + warningVotes.length;
+  const againstVotes = noBreachVotes.length;
+
   let action: TribunalVerdict['action'];
   let tally: string;
   if (breachVotes.length === votes.length) {
     action = 'BREACH'; tally = `${votes.length}-0 BREACH`;
   } else if (breachVotes.length > votes.length / 2) {
-    action = 'WARNING'; tally = `${breachVotes.length}-${votes.length - breachVotes.length} BREACH`;
+    action = 'WARNING'; tally = `${breachVotes.length}-${againstVotes} BREACH`;
   } else if (noBreachVotes.length === votes.length) {
     action = 'NONE'; tally = `0-${votes.length} CLEAR`;
+  } else if (forVotes > againstVotes) {
+    action = 'WARNING'; tally = `${forVotes}-${againstVotes} WARNING`;
   } else {
-    action = warningVotes.length > 0 ? 'WARNING' : 'NONE';
-    tally = `${breachVotes.length}-${noBreachVotes.length} SPLIT`;
+    action = 'NONE'; tally = `${forVotes}-${againstVotes} CLEAR`;
   }
 
   const summary = `[${tally}] ${votes.map(v => `${v.role}: ${v.vote.reasoning}`).join('; ')}`.slice(0, 200);
@@ -406,10 +413,14 @@ app.post('/demo-breach', requireAdminAuth, async (req: Request, res: Response) =
       const belowThreshold = uptimeBps < target.minUptimeBps;
 
       try {
-        if (verdict.action === 'NONE' && !belowThreshold) {
-          // Tribunal says clear AND uptime is above threshold — skip entirely
-          console.log(`[MockAPI] SLA #${verdict.slaId} — CLEAR (${uptime}% >= ${target.minUptimeBps/100}% threshold)`);
-          results.push({ slaId: verdict.slaId, verdict: verdict.tally, action: 'skip', skipped: `Uptime ${uptime}% above ${target.minUptimeBps/100}% threshold` });
+        if (verdict.action === 'NONE') {
+          // Tribunal says CLEAR — record with riskScore=0 so dashboard shows full assessment history
+          const clearHash = await walletClient.writeContract({
+            address: CONTRACT, abi: SLA_ABI, functionName: 'recordBreachWarning',
+            args: [BigInt(verdict.slaId), BigInt(0), verdict.summary],
+          });
+          console.log(`[MockAPI] SLA #${verdict.slaId} — CLEAR (${verdict.tally}) tx: ${clearHash}`);
+          results.push({ slaId: verdict.slaId, verdict: verdict.tally, action: 'clear', warning: clearHash });
           continue;
         }
 
@@ -420,8 +431,8 @@ app.post('/demo-breach', requireAdminAuth, async (req: Request, res: Response) =
         });
         console.log(`[MockAPI] SLA #${verdict.slaId} — BreachWarning tx: ${warnHash} (${verdict.tally})`);
 
-        // Only slash if uptime is actually below SLA threshold
-        if (belowThreshold) {
+        // Only slash if tribunal says BREACH AND uptime is actually below threshold
+        if (verdict.action === 'BREACH' && belowThreshold) {
           const breachHash = await walletClient.writeContract({
             address: CONTRACT, abi: SLA_ABI, functionName: 'recordBreach',
             args: [BigInt(verdict.slaId), BigInt(uptimeBps)],
@@ -429,7 +440,7 @@ app.post('/demo-breach', requireAdminAuth, async (req: Request, res: Response) =
           console.log(`[MockAPI] SLA #${verdict.slaId} — Breach tx: ${breachHash}`);
           results.push({ slaId: verdict.slaId, verdict: verdict.tally, action: 'breach', warning: warnHash, breach: breachHash });
         } else {
-          console.log(`[MockAPI] SLA #${verdict.slaId} — Warning only (${uptime}% >= ${target.minUptimeBps/100}% threshold)`);
+          console.log(`[MockAPI] SLA #${verdict.slaId} — Warning only (verdict=${verdict.action}, uptime ${uptime}% vs ${target.minUptimeBps/100}%)`);
           results.push({ slaId: verdict.slaId, verdict: verdict.tally, action: 'warning', warning: warnHash });
         }
       } catch (err: any) {
@@ -609,6 +620,38 @@ app.post('/reset', requireAdminAuth, async (_req: Request, res: Response) => {
   }
 
   res.json({ ok: true, message: 'All uptime and history reset, cooldowns cleared' });
+});
+
+// POST /seed-arbitrator — register an address as arbitrator (bypasses World ID for demo)
+app.post('/seed-arbitrator', requireAdminAuth, async (req: Request, res: Response) => {
+  if (!walletClient || !publicClient || !CONTRACT) {
+    res.status(500).json({ error: 'Contract client not configured' });
+    return;
+  }
+
+  const { address: addr } = req.body as { address?: string };
+  if (!addr) {
+    res.status(400).json({ error: 'address required' });
+    return;
+  }
+
+  try {
+    const already = await publicClient.readContract({ address: CONTRACT, abi: SLA_ABI, functionName: 'verifiedArbitrators', args: [addr as `0x${string}`] });
+    if (already) {
+      console.log(`[MockAPI] ${addr.slice(0, 10)}... already registered as arbitrator`);
+      res.json({ ok: true, message: 'Already registered', address: addr });
+      return;
+    }
+
+    const hash = await walletClient.writeContract({
+      address: CONTRACT, abi: SLA_ABI, functionName: 'registerArbitratorRelayed',
+      args: [addr as `0x${string}`, BigInt(Math.floor(Math.random() * 1e15))],
+    });
+    console.log(`[MockAPI] Registered ${addr.slice(0, 10)}... as arbitrator (demo bypass) tx: ${hash}`);
+    res.json({ ok: true, message: `Arbitrator registered (demo bypass)`, address: addr, tx: hash });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to register arbitrator', detail: err.message?.slice(0, 200) });
+  }
 });
 
 const PORT = process.env.PORT || 3001;

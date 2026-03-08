@@ -33,6 +33,10 @@ export async function POST(req: Request) {
       path: "/time-warp",
       body: { hours: params.hours ?? 25 },
     },
+    "seed-arbitrator": {
+      path: "/seed-arbitrator",
+      body: { address: params.address },
+    },
     reset: { path: "/reset" },
   };
 

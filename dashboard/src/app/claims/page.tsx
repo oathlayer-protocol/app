@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useAccount } from "wagmi";
-import { useSearchParams } from "next/navigation";
 import { useTenantData } from "@/hooks/usePonderData";
+import Link from "next/link";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -14,20 +13,9 @@ const fadeUp = {
   }),
 };
 
-export default function Claims() {
+export default function TenantView() {
   const { address } = useAccount();
-  const searchParams = useSearchParams();
-  const paramTenant = searchParams.get("tenant");
-
-  // Use URL param if provided, otherwise connected wallet
-  const [tenantInput, setTenantInput] = useState("");
-  const activeTenant = paramTenant || tenantInput || address;
-
-  useEffect(() => {
-    if (paramTenant) setTenantInput(paramTenant);
-  }, [paramTenant]);
-
-  const { slas, breaches, claims, claimedBreachSlaIds, isLoading, error } = useTenantData(activeTenant);
+  const { slas, breaches, claims, isLoading, error } = useTenantData(address);
 
   const totalPenalties = breaches.reduce((sum, b) => sum + Number(b.penaltyAmount) / 1e18, 0);
 
@@ -37,33 +25,16 @@ export default function Claims() {
         <motion.div custom={0} variants={fadeUp}>
           <h1 className="text-2xl md:text-3xl font-semibold text-white tracking-tight mb-1">Tenant View</h1>
           <p className="text-[14px]" style={{ color: "var(--muted)" }}>
-            View SLA agreements, breach history, and penalty payouts for a tenant address.
+            Your SLA agreements, breach history, and penalty payouts.
           </p>
-        </motion.div>
-
-        {/* Tenant address input */}
-        <motion.div custom={1} variants={fadeUp} className="glass-card rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <label className="text-[12px] font-medium shrink-0" style={{ color: "var(--muted)" }}>Tenant</label>
-            <input
-              type="text"
-              value={tenantInput || activeTenant || ""}
-              onChange={e => setTenantInput(e.target.value)}
-              placeholder="0x... (or connect wallet)"
-              className="flex-1 py-2 px-3 rounded-lg text-[13px] font-mono text-white bg-transparent outline-none"
-              style={{ border: "1px solid var(--card-border)" }}
-            />
-          </div>
-          {activeTenant && (
-            <p className="text-[11px] font-mono mt-2" style={{ color: "var(--muted)" }}>
-              Viewing: {activeTenant}
-            </p>
+          {address && (
+            <p className="text-[11px] font-mono mt-2" style={{ color: "var(--muted)" }}>{address}</p>
           )}
         </motion.div>
 
-        {!activeTenant ? (
-          <motion.div custom={2} variants={fadeUp} className="glass-card glass-card-glow rounded-2xl p-8 text-center">
-            <p className="text-[14px]" style={{ color: "var(--muted)" }}>Enter a tenant address or connect a wallet to view SLAs.</p>
+        {!address ? (
+          <motion.div custom={1} variants={fadeUp} className="glass-card glass-card-glow rounded-2xl p-8 text-center">
+            <p className="text-[14px]" style={{ color: "var(--muted)" }}>Connect your wallet to view your SLAs.</p>
           </motion.div>
         ) : isLoading ? (
           <motion.div custom={2} variants={fadeUp} className="text-center py-12">
@@ -107,9 +78,10 @@ export default function Claims() {
                   const slaPenalties = slaBreaches.reduce((s, b) => s + Number(b.penaltyAmount) / 1e18, 0);
 
                   return (
-                    <div
+                    <Link
+                      href={`/sla/${sla.slaId}`}
                       key={sla.id}
-                      className="glass-card rounded-xl p-4"
+                      className="glass-card rounded-xl p-4 block hover:ring-1 hover:ring-white/10 transition-all"
                       style={hasBreach ? { border: "1px solid rgba(239,68,68,0.3)" } : undefined}
                     >
                       <div className="flex items-start justify-between">
@@ -161,7 +133,7 @@ export default function Claims() {
                           </div>
                         )}
                       </div>
-                    </div>
+                    </Link>
                   );
                 })}
               </div>

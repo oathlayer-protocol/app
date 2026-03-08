@@ -111,8 +111,12 @@ export function useTenantData(tenant: string | undefined) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (tenant) setIsLoading(true);
+  }, [tenant]);
+
   const load = useCallback(async () => {
-    if (!tenant) return;
+    if (!tenant) { setIsLoading(false); return; }
     try {
       const data = await fetchTenantData(tenant);
       setSlas(data.slas.items);

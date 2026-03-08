@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { formatEther } from "viem";
 import { useDashboardData } from "@/hooks/usePonderData";
 import Link from "next/link";
+import { AgentVerdictList } from "@/components/TribunalVerdicts";
 
 // --- Animation variants ---
 const stagger = {
@@ -128,16 +129,16 @@ function RiskBadge({ score }: { score: number }) {
 }
 
 function TribunalBadge({ tally, penalized }: { tally: string; penalized: boolean }) {
-  // Tally format: "3-0 BREACH", "2-1 BREACH", "0-3 CLEAR"
-  // penalized = true means SLABreached event exists (actual slash with ETH penalty)
+  // Tally format: "3-0 BREACH", "2-1 BREACH", "3-0 WARNING", "0-3 CLEAR"
   const isBreach = tally.includes("BREACH");
+  const isWarning = tally.includes("WARNING");
   const isClear = tally.includes("CLEAR");
   const voteMatch = tally.match(/^(\d+-\d+)/);
   const votes = voteMatch ? voteMatch[1] : "";
 
-  const label = penalized ? "PENALIZED" : isBreach ? "WARNING" : isClear ? "CLEAR" : tally;
-  const color = penalized ? "#ef4444" : isBreach ? "#f59e0b" : "rgba(74,222,128,0.8)";
-  const bg = penalized ? "rgba(239,68,68,0.1)" : isBreach ? "rgba(245,158,11,0.1)" : "rgba(74,222,128,0.08)";
+  const label = penalized ? "PENALIZED" : isBreach ? "WARNING" : isWarning ? "WARNING" : isClear ? "CLEAR" : "ASSESSED";
+  const color = penalized ? "#ef4444" : (isBreach || isWarning) ? "#f59e0b" : "rgba(74,222,128,0.8)";
+  const bg = penalized ? "rgba(239,68,68,0.1)" : (isBreach || isWarning) ? "rgba(245,158,11,0.1)" : "rgba(74,222,128,0.08)";
 
   return (
     <span
@@ -164,8 +165,8 @@ export default function Dashboard() {
   // SLAs already sorted desc from Ponder query
   const slasSorted = slas;
 
-  const SLA_PREVIEW = 4;
-  const PREDICTION_PREVIEW = 6;
+  const SLA_PREVIEW = 5;
+  const PREDICTION_PREVIEW = 5;
 
   if (isLoading) {
     return (
@@ -312,16 +313,14 @@ export default function Dashboard() {
                       borderColor: w.riskScore > 70 ? "rgba(239,68,68,0.15)" : undefined,
                     }}
                   >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-mono text-[12px]" style={{ color: "var(--muted)" }}>SLA #{w.slaId}</span>
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div className="flex items-center gap-2">
+                        <Link href={`/sla/${w.slaId}`} className="font-mono text-[12px] font-medium text-white">SLA #{w.slaId}</Link>
+                        {tally && <TribunalBadge tally={tally} penalized={w.penalized || breaches.some(b => b.slaId === w.slaId && Math.abs(Number(b.blockNumber) - Number(w.blockNumber)) <= 1)} />}
+                      </div>
                       <RiskBadge score={w.riskScore} />
                     </div>
-                    {tally && (
-                      <div className="mb-1.5">
-                        <TribunalBadge tally={tally} penalized={penalizedSlaIds.has(Number(w.slaId))} />
-                      </div>
-                    )}
-                    <p className="text-[12px] leading-relaxed" style={{ color: "var(--muted-strong)" }}>{summary}</p>
+                    <AgentVerdictList summary={summary} />
                   </div>
                 );
               })}
@@ -333,47 +332,63 @@ export default function Dashboard() {
       {/* Recent Breaches */}
       {breaches.length > 0 && (
         <div>
-          <h2 className="text-[15px] font-semibold text-white mb-3">Recent Breaches</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-[15px] font-semibold text-white">Recent Breaches</h2>
+            {breaches.length > 5 && (
+              <Link
+                href="/dashboard/breaches"
+                className="text-[12px] font-medium"
+                style={{ color: "var(--chainlink-light)" }}
+              >
+                View all →
+              </Link>
+            )}
+          </div>
           <div className="glass-card rounded-2xl overflow-hidden">
             <table className="w-full text-[13px]">
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--card-border)" }}>
-                  {["SLA", "Provider", "Uptime", "Penalty", "Block", "Tx"].map((h) => (
+                  {["SLA", "Provider", "Tenant", "Uptime", "Penalty", "Tx"].map((h) => (
                     <th key={h} className="px-4 py-3 text-left font-medium" style={{ color: "var(--muted)" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {breaches.slice(0, 20).map((breach, i) => (
-                  <tr
-                    key={`${breach.transactionHash}-${i}`}
-                    style={{
-                      borderBottom: i < 19 ? "1px solid var(--card-border)" : "none",
-                      background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
-                    }}
-                  >
-                    <td className="px-4 py-3 text-white font-mono">#{breach.slaId}</td>
-                    <td className="px-4 py-3 font-mono" style={{ color: "var(--muted-strong)" }}>{breach.provider.slice(0, 10)}...</td>
-                    <td className="px-4 py-3 text-white">{Number(breach.uptimeBps) / 100}%</td>
-                    <td className="px-4 py-3 text-white">{formatEther(BigInt(breach.penaltyAmount))} ETH</td>
-                    <td className="px-4 py-3" style={{ color: "var(--muted)" }}>{breach.blockNumber}</td>
-                    <td className="px-4 py-3 font-mono">
-                      {TENDERLY_EXPLORER ? (
-                        <a
-                          href={`${TENDERLY_EXPLORER}/tx/${breach.transactionHash}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="underline"
-                          style={{ color: "var(--chainlink-light)" }}
-                        >
-                          {breach.transactionHash.slice(0, 10)}...
-                        </a>
-                      ) : (
-                        <span style={{ color: "var(--chainlink-light)" }}>{breach.transactionHash.slice(0, 10)}...</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {breaches.slice(0, 5).map((breach, i) => {
+                  const sla = slas.find(s => s.slaId === breach.slaId);
+                  return (
+                    <tr
+                      key={`${breach.transactionHash}-${i}`}
+                      style={{
+                        borderBottom: i < 4 ? "1px solid var(--card-border)" : "none",
+                        background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
+                      }}
+                    >
+                      <td className="px-4 py-3 text-white font-mono">
+                        <Link href={`/sla/${breach.slaId}`} className="underline" style={{ color: "var(--chainlink-light)" }}>#{breach.slaId}</Link>
+                      </td>
+                      <td className="px-4 py-3 font-mono" style={{ color: "var(--muted-strong)" }}>{breach.provider.slice(0, 10)}...</td>
+                      <td className="px-4 py-3 font-mono" style={{ color: "var(--muted-strong)" }}>{sla?.tenant ? `${sla.tenant.slice(0, 10)}...` : "—"}</td>
+                      <td className="px-4 py-3 text-white">{Number(breach.uptimeBps) / 100}%</td>
+                      <td className="px-4 py-3 text-white">{formatEther(BigInt(breach.penaltyAmount))} ETH</td>
+                      <td className="px-4 py-3 font-mono">
+                        {TENDERLY_EXPLORER ? (
+                          <a
+                            href={`${TENDERLY_EXPLORER}/tx/${breach.transactionHash}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline"
+                            style={{ color: "var(--chainlink-light)" }}
+                          >
+                            {breach.transactionHash.slice(0, 10)}...
+                          </a>
+                        ) : (
+                          <span style={{ color: "var(--chainlink-light)" }}>{breach.transactionHash.slice(0, 10)}...</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

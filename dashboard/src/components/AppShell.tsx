@@ -16,7 +16,6 @@ const NAV_LINKS = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Register", href: "/provider/register" },
   { label: "Create SLA", href: "/sla/create" },
-  { label: "Tenant", href: "/claims" },
   { label: "Arbitrate", href: "/arbitrate" },
 ];
 

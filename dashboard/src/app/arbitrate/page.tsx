@@ -107,6 +107,28 @@ function DisputeCard({ slaId, provider, uptimeBps, penaltyAmount }: {
 
 export default function Arbitrate() {
   const { address, isConnected } = useAccount();
+  const [demoMode, setDemoMode] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  useEffect(() => {
+    setDemoMode(localStorage.getItem("oathlayer-demo") === "true");
+  }, []);
+
+  const handleDemoRegister = async () => {
+    if (!address) return;
+    setDemoLoading(true);
+    try {
+      const res = await fetch("/api/demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "seed-arbitrator", address }),
+      });
+      if (res.ok) window.location.reload();
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
   const [idkitOpen, setIdkitOpen] = useState(false);
   const [rpContext, setRpContext] = useState<RpContext | null>(null);
   const [proofResult, setProofResult] = useState<IDKitResult | null>(null);
@@ -249,6 +271,19 @@ export default function Arbitrate() {
               {verifyError && (
                 <div className="mt-4 p-3 rounded-lg text-[13px] mx-auto max-w-sm" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)" }}>
                   <p className="text-red-400">{verifyError}</p>
+                </div>
+              )}
+              {demoMode && (
+                <div className="mt-6 pt-6" style={{ borderTop: "1px solid var(--card-border)" }}>
+                  <p className="text-[12px] mb-3" style={{ color: "var(--muted)" }}>Demo mode — bypass World ID verification</p>
+                  <button
+                    onClick={handleDemoRegister}
+                    disabled={demoLoading}
+                    className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-colors disabled:opacity-40"
+                    style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.2)", color: "#8b5cf6" }}
+                  >
+                    {demoLoading ? "Registering..." : "Register as Arbitrator (Demo)"}
+                  </button>
                 </div>
               )}
             </>

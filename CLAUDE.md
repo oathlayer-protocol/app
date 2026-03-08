@@ -16,6 +16,19 @@ World Chain (4801)          CRE Workflows              Sepolia (Tenderly VNet)
 └──────────────────┘   └─────────────────────┘   └──────────────────┘
 ```
 
+## What CRE Actually Does
+
+CRE is the **full oracle + automation pipeline** — not just a trigger:
+
+1. **Monitors** — Cron reads all SLAs, fetches off-chain uptime data per provider
+2. **Analyzes** — Runs 3-agent AI Tribunal (Risk Analyst → Provider Advocate → Judge) via Groq in TEE
+3. **Enforces** — Writes `recordBreachWarning()` / `recordBreach()` to contract based on verdict
+4. **Relays** — Cross-chain provider registration: World Chain event → compliance check → Sepolia write
+
+`onlyCREForwarder` modifier gates all enforcement functions. For testnet, `creForwarder` = deployer wallet (`0x77C037fb...`). In production, this would be the DON's assigned forwarder address.
+
+Mock API's `/demo-breach` replicates the same logic for demo convenience (bypasses CRE DON).
+
 ## Modules
 
 | Module | Path | Stack |
@@ -63,11 +76,27 @@ cd dashboard && npm install && npm run dev
 - Solidity: Foundry style, `require()` strings for errors (not custom errors — hackathon simplicity)
 - TypeScript: CRE SDK patterns — `runtime.runInNodeMode()` for consensus, `.result()` for sync unwrap
 - Indexer: Ponder event handlers in `src/index.ts`, schema in `ponder.schema.ts`, GraphQL API in `src/api/index.ts`
-- Dashboard: data fetched from Ponder GraphQL via `hooks/usePonderData.ts` (5s poll). `lib/ponder.ts` has typed queries. `getCollateralRatio` still uses wagmi (not indexed).
+- Dashboard: data from Ponder GraphQL via `hooks/usePonderData.ts` (5s poll). `lib/ponder.ts` has typed queries. `getCollateralRatio` still uses wagmi.
 - Ponder returns strings for bigint fields — wrap with `BigInt()` for `formatEther()`
+- AI Tribunal: ALL verdicts on-chain (CLEAR=riskScore 0, WARNING, BREACH) — "decentralized AI" full audit trail. Production: move CLEAR/WARNING off-chain for gas optimization.
+- Breach enforcement: tribunal must vote BREACH **and** uptime < SLA threshold. Breach cooldown: 24h, warning cooldown: 4h.
 - Tests: Foundry `vm.prank`/`vm.expectRevert`/`vm.warp` patterns
 - Access control: `onlyCREForwarder` modifier for all CRE-callable functions
 - Compliance: `ComplianceStatus` enum (NONE=0, APPROVED=1, REJECTED=2), rejection is permanent
+
+## Dashboard Pages
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Landing page |
+| `/dashboard` | Live SLAs (5), AI Tribunal (5), Recent Breaches (5) — each with "View all →" |
+| `/dashboard/slas` | All SLA agreements |
+| `/dashboard/predictions` | All AI Tribunal verdicts with per-agent breakdown |
+| `/dashboard/breaches` | All breaches with tenant column |
+| `/provider/register` | World ID verify + bond ETH + compliance polling |
+| `/sla/create` | Create SLA (compliance-gated) |
+| `/sla/[id]` | SLA detail: agreement, breaches, tribunal history, claims |
+| `/arbitrate` | World ID gated arbitration panel |
 
 ## Environment Variables
 

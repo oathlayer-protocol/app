@@ -2,43 +2,62 @@
 
 **Autonomous SLA Enforcement for Tokenized Real-World Assets**
 
-Chainlink CRE monitors uptime, an AI Tribunal Council (3-agent adversarial system via Groq/Llama 3.3) predicts breaches before they happen, and penalties execute on-chain — all without human intervention. Provider identity gated by World ID.
+OathLayer is a trustless SLA enforcement protocol where Chainlink CRE (Compute Runtime Engine) automates the entire compliance lifecycle — from monitoring provider uptime, to running a 3-agent adversarial AI Tribunal for breach determination, to executing on-chain penalties — without human intervention. Provider identity is Sybil-resistant via World ID, and disputed penalties can be challenged through a human arbitration layer that overrides AI decisions.
 
-**Hackathon:** CONVERGENCE (Chainlink) — Deadline: March 27, 2026
-**Tracks:** Risk & Compliance ($16K) · Privacy ($16K) · CRE & AI ($17K)
-**Bounties:** World ID + CRE ($5K) · World Mini App + CRE ($5K) · Tenderly VirtualTestNets ($5K)
+**In short:** CRE watches. AI deliberates. Smart contracts enforce. Humans arbitrate.
 
 ---
 
 ## Architecture
 
 ```
-World Chain (4801)          CRE Workflows              Sepolia (Tenderly VNet)
-┌──────────────────┐   ┌─────────────────────┐   ┌──────────────────┐
-│ WorldChainRegistry│   │ 1. Cron (15min)     │   │ SLAEnforcement   │
-│                  │   │    → fetch uptime    │   │                  │
-│ register() ──────┼──→│    → AI Tribunal     │──→│ recordBreach()   │
-│  ProviderReg     │   │    → 3-agent council │   │ recordWarn()     │
-│  Requested       │   │                     │   │                  │
-│                  │   │ 2. ProviderRegReq   │   │ compliance gate  │
-│                  │   │    → ConfidHTTP KYC ─┼──→│ setCompliance()  │
-│                  │   │    → relay or reject │   │                  │
-│                  │   │                     │   │ createSLA()      │
-│                  │   │ 3. ClaimFiled react  │   │ (gated)          │
-│                  │   │ 4. ArbitratorReg    │   │                  │
-└──────────────────┘   └─────────────────────┘   └──────────────────┘
++----------------------------------------------------------------------+
+|                    CHAINLINK CRE (Oracle Layer)                       |
+|                                                                       |
+|  +-------------+   +--------------+   +---------------------------+  |
+|  | Cron 15min  |-->| Fetch        |-->| AI Tribunal Council       |  |
+|  | (trigger)   |   | Uptime API   |   |                           |  |
+|  +-------------+   +--------------+   |  +---------------------+  |  |
+|                                        |  | 1. Risk Analyst     |  |  |
+|  +-------------+   +--------------+   |  | 2. Provider Advocate|  |  |
+|  | Log Trigger |-->| Confidential |   |  | 3. Enforce. Judge   |  |  |
+|  | (events)    |   | HTTPClient   |   |  +---------------------+  |  |
+|  +-------------+   | (TEE)        |   |  Groq / Llama 3.3 70B    |  |
+|                     +--------------+   +-------------+-------------+  |
++------------------------------------------------------|-+--------------+
+                                                       |
+                                                       v
++----------------------------------------------------------------------+
+|                            ON-CHAIN                                   |
+|                                                                       |
+|  +-------------------+            +-------------------------------+  |
+|  | World Chain (4801) |            | Sepolia (Tenderly VNet)       |  |
+|  |                    |            |                               |  |
+|  | WorldChain         |   CRE     | SLAEnforcement                |  |
+|  | Registry           |  relay    |  |- recordBreach()     <-- CRE|  |
+|  |                    | --------> |  |- recordBreachWarning()     |  |
+|  | register()         |            |  |- setCompliance()          |  |
+|  | (World ID ZK)      |            |  |- createSLA() (gated)     |  |
+|  |                    |            |  |- fileClaim()              |  |
+|  |                    |            |  |- arbitrate() (World ID)   |  |
+|  +-------------------+            +-------------------------------+  |
++----------------------------------------------------------------------+
 
-Dashboard (Next.js)          Mini App (World App)      Mock APIs (:3001)
-┌──────────────────┐   ┌─────────────────────┐   ┌─────────────────┐
-│ / — landing      │   │ Provider registration│   │ /provider/:addr │
-│ /dashboard —     │   │ via World ID MiniKit │   │   /uptime       │
-│   live SLAs,     │   │ File claims against  │   │ /compliance/    │
-│   breach alerts, │   │   SLA providers      │   │   :addr         │
-│   risk scores    │   │                     │   │                 │
-│ /sla/create      │   │ Runs inside World   │   │                 │
-│ /claims          │   │ App mobile browser   │   │                 │
-│ /arbitrate       │   │                     │   │                 │
-└──────────────────┘   └─────────────────────┘   └─────────────────┘
++----------------------------------------------------------------------+
+|                            OFF-CHAIN                                  |
+|                                                                       |
+|  Dashboard (:3000)       Mini App             Mock API (:3001)        |
+|  +----------------+     +---------------+    +---------------+        |
+|  | /dashboard     |     | World App     |    | /uptime       |        |
+|  | /sla/[id]      |     | MiniKit       |    | /compliance   |        |
+|  | /sla/create    |     | Provider      |    | /history      |        |
+|  | /arbitrate     |     | registration  |    | /demo-*       |        |
+|  +-------+--------+     +-------+-------+    +-------+-------+        |
+|          |                      |                     |                |
+|          +----------------------+---------------------+                |
+|                     Ponder Indexer (:42069)                            |
+|                     GraphQL <- on-chain events                        |
++----------------------------------------------------------------------+
 ```
 
 ## How Chainlink CRE is Used (5 Capabilities)
@@ -63,11 +82,13 @@ OathLayer uses a **3-agent adversarial AI tribunal** to prevent false positives 
 
 - **Model:** Groq (Llama 3.3 70B) via `ConfidentialHTTPClient` — API key protected in TEE
 - **Flow:** Sequential deliberation: Analyst → Advocate (sees Analyst output) → Judge (sees both)
-- **Voting:** Unanimous BREACH → slash bond. Majority → warning. Unanimous clear → skip.
+- **Voting:** Unanimous BREACH → slash bond (if uptime below threshold). Majority → warning. Unanimous clear → record with riskScore=0.
 - **On-chain output:** `[2-1 BREACH] Analyst: sustained degradation; Advocate: maintenance window; Judge: evidence sufficient`
+- **All verdicts on-chain** — Including CLEAR (riskScore=0). Full audit trail for transparent, decentralized AI governance. Production roadmap: move CLEAR/WARNING off-chain for gas optimization.
+- **Breach gating:** Tribunal must vote BREACH **and** uptime must be below SLA threshold to slash. Prevents false positives.
 - **Graceful degradation:** If an agent fails, remaining agents still vote
 - **Historical context:** Provider Advocate receives 7-day uptime history for trend-based defense arguments
-- 4-hour cooldown per SLA prevents warning spam
+- **Cooldowns:** 24h breach cooldown + 4h warning cooldown per SLA (contract-enforced)
 
 ## How World ID is Used
 
@@ -118,26 +139,34 @@ oathlayer/
 │   │   ├── DeploySLA.s.sol
 │   │   └── DeployWorldChain.s.sol
 │   └── test/
-│       └── SLAEnforcement.t.sol    # 22 tests
+│       └── SLAEnforcement.t.sol    # 27 tests (incl. breach cooldown)
 ├── workflow/               # Chainlink CRE workflow
 │   ├── workflow.ts         # 4 handlers: cron, claim, provider reg, arbitrator reg
 │   └── mock-api/
-│       └── server.ts       # Mock uptime + compliance API
+│       └── server.ts       # Mock uptime + compliance API + AI Tribunal + demo controls
+├── indexer/                # Ponder event indexer → GraphQL API
+│   ├── ponder.schema.ts    # Schema: sla, breach, breach_warning, claim, etc.
+│   ├── src/index.ts        # Event handlers (8 events)
+│   └── src/api/index.ts    # Hono + GraphQL middleware
 ├── dashboard/              # Next.js + wagmi + RainbowKit
 │   └── src/
 │       ├── app/
 │       │   ├── (landing)/page.tsx         # Landing page
-│       │   ├── dashboard/page.tsx         # Live SLA dashboard
+│       │   ├── dashboard/page.tsx         # Live SLA dashboard (5+5+5 preview)
+│       │   ├── dashboard/slas/page.tsx    # All SLA agreements
+│       │   ├── dashboard/predictions/    # All AI Tribunal verdicts
+│       │   ├── dashboard/breaches/       # All breaches with tenant
 │       │   ├── provider/register/page.tsx # World ID + bond + compliance
 │       │   ├── sla/create/page.tsx        # Create SLA (compliance-gated)
-│       │   ├── sla/[id]/page.tsx          # SLA detail view
-│       │   ├── claims/page.tsx            # File claims
+│       │   ├── sla/[id]/page.tsx          # SLA detail + tribunal history
 │       │   └── arbitrate/page.tsx         # World ID gated arbitration
 │       ├── components/
-│       │   ├── AppShell.tsx               # Shared nav + layout
+│       │   ├── AppShell.tsx               # Shared nav + demo controls
+│       │   ├── TribunalVerdicts.tsx       # Agent verdict breakdown (A/D/J)
 │       │   └── Providers.tsx              # wagmi + RainbowKit providers
 │       └── lib/
 │           ├── contract.ts                # ABI + address
+│           ├── ponder.ts                  # Ponder GraphQL client + typed queries
 │           └── wagmi.ts                   # Chain config (Tenderly VNet)
 └── miniapp/                # World Mini App (mobile)
     └── src/app/page.tsx    # Provider registration + claims via MiniKit
@@ -248,9 +277,10 @@ cre workflow simulate ./workflow --target local-simulation --non-interactive --t
 | Terminal | Command | Port |
 |----------|---------|------|
 | 1 | `cd workflow/mock-api && npm run dev` | `:3001` |
-| 2 | `cd dashboard && npm run dev` | `:3000` |
-| 3 | `cd miniapp && npm run dev` (optional) | `:3002` |
-| 4 | CRE simulate commands (see above) | — |
+| 2 | `cd indexer && npm run dev` | `:42069` |
+| 3 | `cd dashboard && npm run dev` | `:3000` |
+| 4 | `cd miniapp && npm run dev` (optional) | `:3002` |
+| 5 | CRE simulate commands (see above) | — |
 
 ---
 
@@ -305,11 +335,15 @@ This pattern demonstrates CRE as a general-purpose cross-chain bridge for identi
 1. **Landing** (`/`) — Product overview with live status badge
 2. **Register provider** (`/provider/register`) — Connect wallet → World ID verify → bond ETH → compliance check fires automatically (CRE → ConfidentialHTTPClient → mock API) → APPROVED
 3. **Create SLA** (`/sla/create`) — Compliance-gated form: set uptime threshold, penalty %, bond amount
-4. **Dashboard** (`/dashboard`) — Live stats: active SLAs, total bonded, AI warnings, breaches
-5. **AI Tribunal** — CRE cron fires → 3 agents deliberate (Risk Analyst → Provider Advocate → Judge) → BreachWarning with tally
-6. **Trigger breach** — `POST /set-uptime {"uptime": 98.0}` → CRE detects → `recordBreach()` → bond slashed
-7. **File claim** (`/claims` or Mini App) — Tenant submits maintenance request → triggers reactive CRE scan
-8. **Arbitrate** (`/arbitrate`) — World ID gated: uphold or overturn breach
+4. **Dashboard** (`/dashboard`) — Live stats: active SLAs (5), AI Tribunal verdicts (5), recent breaches (5) — each with "View all →"
+5. **Demo Controls** (bottom-right FAB) — Set SLA target + uptime %, trigger AI Tribunal assessment:
+   - **Simulate Breach** — 3-agent tribunal deliberates → breach if unanimous + below threshold → bond slashed
+   - **Warning Only** — tribunal runs but no slash
+   - **+25h** — fast-forward VNet time past cooldowns
+   - **Reset** — restore healthy uptime + clear cooldowns
+6. **AI Tribunal history** (`/dashboard/predictions`) — Per-agent verdict breakdown (Risk Analyst / Provider Advocate / Enforcement Judge) with vote tallies
+7. **SLA detail** (`/sla/[id]`) — Agreement details, breach history, tribunal verdicts, claims
+8. **Arbitrate** (`/arbitrate`) — World ID gated: uphold or overturn breach decisions
 9. **Tenderly explorer** — All transactions publicly verifiable without a wallet
 
 ### Quick Test (No World ID Required)
@@ -365,6 +399,7 @@ curl -X POST http://localhost:3001/reset -H "x-admin-token: demo-secret"
 | Price Feeds | Chainlink AggregatorV3Interface (ETH/USD) |
 | Privacy | CRE ConfidentialHTTPClient (TEE enclaves) |
 | Identity | World ID / IDKit v4 + MiniKit |
+| Indexer | Ponder v0.12 + Hono (GraphQL API for dashboard) |
 | Testing | Tenderly Virtual TestNets (State Sync enabled) |
 | Frontend | Next.js + wagmi + viem + RainbowKit |
 | Mobile | World Mini App SDK (MiniKit) |

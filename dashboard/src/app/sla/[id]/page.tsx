@@ -7,6 +7,7 @@ import { useSLADetail } from "@/hooks/usePonderData";
 import { useReadContract } from "wagmi";
 import { SLA_CONTRACT_ADDRESS, SLA_ABI } from "@/lib/contract";
 import Link from "next/link";
+import { AgentVerdictList } from "@/components/TribunalVerdicts";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -71,7 +72,7 @@ export default function SLADetail({ params }: { params: Promise<{ id: string }> 
               { label: "Min Uptime", value: `${Number(minUptimeBps) / 100}%` },
               { label: "Penalty Rate", value: `${Number(penaltyBps) / 100}%` },
               { label: "Response Time", value: `${Number(responseTimeHrs)}h` },
-              { label: "Created", value: new Date(createdAt).toLocaleString() },
+              { label: "Created", value: createdAt ? new Date(Number(createdAt)).toLocaleString() : "N/A" },
               ...(collateralRatio !== undefined ? [{ label: "Collateral (USD)", value: `$${Number(collateralRatio).toLocaleString()}` }] : []),
             ].map(({ label, value, mono }) => (
               <div key={label}>
@@ -125,27 +126,32 @@ export default function SLADetail({ params }: { params: Promise<{ id: string }> 
                 const tally = w.tally || "";
                 const summary = w.summary || w.prediction;
                 const isBreach = tally.includes("BREACH");
+                const isWarning = tally.includes("WARNING");
                 const isClear = tally.includes("CLEAR");
-                const penalized = breaches.length > 0;
+                // Check if this specific verdict led to a breach (same block or next block)
+                const penalized = w.penalized || breaches.some(b => Math.abs(Number(b.blockNumber) - Number(w.blockNumber)) <= 1);
                 const votes = tally.match(/^(\d+-\d+)/)?.[1] || "";
-                const label = (isBreach && penalized) ? "PENALIZED" : isBreach ? "WARNING" : isClear ? "CLEAR" : tally;
-                const color = (isBreach && penalized) ? "#ef4444" : isBreach ? "#f59e0b" : "rgba(74,222,128,0.8)";
-                const bg = (isBreach && penalized) ? "rgba(239,68,68,0.1)" : isBreach ? "rgba(245,158,11,0.1)" : "rgba(74,222,128,0.08)";
+                const label = penalized ? "PENALIZED" : isBreach ? "WARNING" : isWarning ? "WARNING" : isClear ? "CLEAR" : "ASSESSED";
+                const color = penalized ? "#ef4444" : (isBreach || isWarning) ? "#f59e0b" : "rgba(74,222,128,0.8)";
+                const bg = penalized ? "rgba(239,68,68,0.1)" : (isBreach || isWarning) ? "rgba(245,158,11,0.1)" : "rgba(74,222,128,0.08)";
 
                 return (
                   <div key={`${w.blockNumber}-${i}`} className="glass-card rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span
-                        className="px-2 py-0.5 rounded-md text-[11px] font-mono font-medium"
-                        style={{ color, background: bg }}
-                      >
-                        {votes} {label}
-                      </span>
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="px-2 py-0.5 rounded-md text-[11px] font-mono font-medium"
+                          style={{ color, background: bg }}
+                        >
+                          {votes} {label}
+                        </span>
+                        <span className="text-[10px] font-mono" style={{ color: "var(--muted)" }}>Block {w.blockNumber}</span>
+                      </div>
                       <span className="text-[11px] font-mono" style={{ color: "var(--muted)" }}>
-                        Risk: {w.riskScore} · Block {w.blockNumber}
+                        Risk: {w.riskScore}
                       </span>
                     </div>
-                    <p className="text-[12px] leading-relaxed" style={{ color: "var(--muted-strong)" }}>{summary}</p>
+                    <AgentVerdictList summary={summary} />
                   </div>
                 );
               })}

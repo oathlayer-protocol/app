@@ -5,6 +5,7 @@ import { usePublicClient } from "wagmi";
 import { parseAbiItem } from "viem";
 import { SLA_CONTRACT_ADDRESS, DEPLOY_BLOCK } from "@/lib/contract";
 import Link from "next/link";
+import { AgentVerdictList } from "@/components/TribunalVerdicts";
 
 type BreachWarningEvent = { slaId: bigint; riskScore: bigint; prediction: string; blockNumber: bigint };
 
@@ -82,19 +83,15 @@ export default function AllPredictions() {
                 className="glass-card rounded-xl p-4"
                 style={{ borderColor: Number(w.riskScore) > 70 ? "rgba(239,68,68,0.15)" : undefined }}
               >
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center justify-between mb-2.5">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-[12px]" style={{ color: "var(--muted)" }}>SLA #{Number(w.slaId)}</span>
-                    <span className="text-[11px]" style={{ color: "var(--muted)" }}>Block {Number(w.blockNumber)}</span>
+                    <Link href={`/sla/${Number(w.slaId)}`} className="font-mono text-[12px] font-medium text-white">SLA #{Number(w.slaId)}</Link>
+                    {tally && <TribunalBadge tally={tally} />}
+                    <span className="text-[10px] font-mono" style={{ color: "var(--muted)" }}>Block {Number(w.blockNumber)}</span>
                   </div>
                   <RiskBadge score={Number(w.riskScore)} />
                 </div>
-                {tally && (
-                  <div className="mb-1.5">
-                    <TribunalBadge tally={tally} />
-                  </div>
-                )}
-                <p className="text-[13px] leading-relaxed" style={{ color: "var(--muted-strong)" }}>{summary}</p>
+                <AgentVerdictList summary={summary} />
               </div>
             );
           })}
