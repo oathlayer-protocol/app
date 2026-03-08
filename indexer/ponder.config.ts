@@ -3,6 +3,9 @@ import { createConfig } from "ponder";
 import { SLAEnforcement_ABI } from "./abis/SLAEnforcement";
 
 export default createConfig({
+  database: {
+    kind: "sqlite",
+  },
   chains: {
     sepolia: {
       id: 11155111,
