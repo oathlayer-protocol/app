@@ -132,7 +132,7 @@
 
 | Component | Location | Link |
 |-----------|----------|------|
-| SLAEnforcement | OathLayer VNet (Sepolia fork, State Sync ON) | `0x8286A8cfA5c8C1872097D9b43E01CbdEe934D319` |
+| SLAEnforcement | OathLayer VNet (Sepolia fork, State Sync ON) | `0x7c8C2E0D488d2785040171f4C087B0EA7637DE91` |
 | WorldChainRegistry | OathLayer World Chain VNet (State Sync ON) | `0xe1349d2c44422b70c73bf767afb58ae1c59cd1fd` |
 | Sepolia VNet Explorer | Tenderly | [Link](https://dashboard.tenderly.co/robbyn/project/testnet/5c780e4f-4df5-4a50-b221-2342cd4b713e) |
 | World Chain VNet Explorer | Tenderly | [Link](https://dashboard.tenderly.co/robbyn/project/testnet/d8f04de9-4cc1-4066-b8d3-31ed51ee1d85) |

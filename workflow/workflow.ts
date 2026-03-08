@@ -12,7 +12,7 @@ import {
   type Runtime,
   encodeCallMsg,
   prepareReportRequest,
-  LAST_FINALIZED_BLOCK_NUMBER,
+  LATEST_BLOCK_NUMBER,
   bytesToHex,
   json,
   ok,
@@ -59,6 +59,7 @@ const SLA_ABI = [
     outputs: [
       { internalType: "address", name: "provider", type: "address" },
       { internalType: "address", name: "tenant", type: "address" },
+      { internalType: "string", name: "serviceName", type: "string" },
       { internalType: "uint256", name: "bondAmount", type: "uint256" },
       { internalType: "uint256", name: "responseTimeHrs", type: "uint256" },
       { internalType: "uint256", name: "minUptimeBps", type: "uint256" },
@@ -322,7 +323,7 @@ function readSlaCount(
   const callData = encodeFunctionData({ abi: SLA_ABI, functionName: "slaCount" });
   const reply = evmClient.callContract(runtime, {
     call: encodeCallMsg({ from: zeroAddress, to: contractAddress, data: callData }),
-    blockNumber: LAST_FINALIZED_BLOCK_NUMBER,
+    blockNumber: LATEST_BLOCK_NUMBER,
   }).result();
 
   return decodeFunctionResult({
@@ -335,6 +336,7 @@ function readSlaCount(
 type SLAData = {
   provider: Address;
   tenant: Address;
+  serviceName: string;
   bondAmount: bigint;
   minUptimeBps: bigint;
   penaltyBps: bigint;
@@ -350,7 +352,7 @@ function readSla(
   const callData = encodeFunctionData({ abi: SLA_ABI, functionName: "slas", args: [BigInt(slaId)] });
   const reply = evmClient.callContract(runtime, {
     call: encodeCallMsg({ from: zeroAddress, to: contractAddress, data: callData }),
-    blockNumber: LAST_FINALIZED_BLOCK_NUMBER,
+    blockNumber: LATEST_BLOCK_NUMBER,
   }).result();
 
   // Decode manually — CRE's Javy WASM runtime can't handle BigInt > Number.MAX_SAFE_INTEGER
@@ -358,8 +360,8 @@ function readSla(
   const hex = bytesToHex(reply.data);
   const data = hex.slice(2); // remove 0x prefix
   // Each ABI slot is 32 bytes = 64 hex chars
-  // Slots: 0=provider, 1=tenant, 2=bondAmount, 3=responseTimeHrs,
-  //        4=minUptimeBps, 5=penaltyBps, 6=createdAt, 7=active
+  // Slots: 0=provider, 1=tenant, 2=serviceName(offset), 3=bondAmount,
+  //        4=responseTimeHrs, 5=minUptimeBps, 6=penaltyBps, 7=createdAt, 8=active
   const slot = (i: number): string => {
     const s = data.slice(i * 64, (i + 1) * 64);
     return s.length > 0 ? s : "0".repeat(64);
@@ -368,13 +370,23 @@ function readSla(
   const numFromSlot = (i: number) => parseInt(slot(i), 16);
   const boolFromSlot = (i: number) => parseInt(slot(i), 16) !== 0;
 
+  // serviceName is dynamic — offset at slot 2 points to length + data
+  const strOffset = numFromSlot(2) / 32;
+  const strLen = numFromSlot(strOffset);
+  const strHex = data.slice((strOffset + 1) * 64, (strOffset + 1) * 64 + strLen * 2);
+  let serviceName = "";
+  for (let c = 0; c < strHex.length; c += 2) {
+    serviceName += String.fromCharCode(parseInt(strHex.slice(c, c + 2), 16));
+  }
+
   return {
     provider: addrFromSlot(0),
     tenant: addrFromSlot(1),
+    serviceName,
     bondAmount: BigInt(0), // not used in scan logic, skip large number parsing
-    minUptimeBps: BigInt(numFromSlot(4)),
-    penaltyBps: BigInt(numFromSlot(5)),
-    active: boolFromSlot(7),
+    minUptimeBps: BigInt(numFromSlot(5)),
+    penaltyBps: BigInt(numFromSlot(6)),
+    active: boolFromSlot(8),
   };
 }
 
@@ -424,31 +436,41 @@ function scanSLAs(runtime: Runtime<Config>): { breachCount: number; warningCount
   // Collect active SLA metrics for batched AI Tribunal deliberation
   const activeSLAMetrics: { slaId: number; provider: Address; uptimeBps: number; minUptimeBps: number }[] = [];
 
+  // Cache uptime per provider to avoid hitting CRE's 5 HTTP call limit
+  const uptimeCache: Record<string, number> = {};
+
   for (let i = 0; i < Number(slaCount); i++) {
     const sla = readSla(runtime, evmClient, contractAddress, i);
     if (!sla.active) continue;
 
-    // Fetch uptime in node mode — all DON nodes must agree (consensus)
-    const rawUptimeData = runtime.runInNodeMode(
-      (nodeRuntime) => {
-        const response = httpClient.sendRequest(nodeRuntime, {
-          url: `${config.uptimeApiUrl}/provider/${sla.provider}/uptime`,
-          method: "GET",
-          headers: { Authorization: `Bearer ${apiKey}` },
-        }).result();
+    let uptimeBps: number;
+    if (uptimeCache[sla.provider] !== undefined) {
+      uptimeBps = uptimeCache[sla.provider];
+    } else {
+      // Fetch uptime in node mode — all DON nodes must agree (consensus)
+      const rawUptimeData = runtime.runInNodeMode(
+        (nodeRuntime) => {
+          const response = httpClient.sendRequest(nodeRuntime, {
+            url: `${config.uptimeApiUrl}/provider/${sla.provider}/uptime`,
+            method: "GET",
+            headers: { Authorization: `Bearer ${apiKey}` },
+          }).result();
 
-        if (!ok(response)) {
-          throw new Error(`HTTP ${response.statusCode}`);
-        }
+          if (!ok(response)) {
+            throw new Error(`HTTP ${response.statusCode}`);
+          }
 
-        return json(response);
-      },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      consensusIdenticalAggregation() as any
-    )().result();
+          return json(response);
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        consensusIdenticalAggregation() as any
+      )().result();
 
-    const uptimeData = rawUptimeData as { uptimePercent: number };
-    const uptimeBps = Math.round(uptimeData.uptimePercent * 100);
+      const uptimeData = rawUptimeData as { uptimePercent: number };
+      uptimeBps = Math.round(uptimeData.uptimePercent * 100);
+      uptimeCache[sla.provider] = uptimeBps;
+    }
+
     const minUptimeBps = Number(sla.minUptimeBps);
 
     runtime.log(`[OathLayer] SLA ${i}: ${uptimeBps} bps (min: ${minUptimeBps})`);
@@ -473,9 +495,10 @@ function scanSLAs(runtime: Runtime<Config>): { breachCount: number; warningCount
       const groqKey = runtime.getSecret({ id: "GROQ_API_KEY" }).result().value;
       if (!groqKey) throw new Error("GROQ_API_KEY secret not configured");
 
-      // Fetch historical uptime for each provider (for Provider Advocate context)
+      // Fetch historical uptime per unique provider (cached to stay within CRE HTTP limit)
       const providerHistories: Record<string, { timestamp: string; uptimePercent: number }[]> = {};
       for (const metric of activeSLAMetrics) {
+        if (providerHistories[metric.provider] !== undefined) continue; // already fetched
         try {
           const historyData = runtime.runInNodeMode(
             (nodeRuntime) => {

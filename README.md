@@ -151,7 +151,7 @@ OathLayer runs on **two Tenderly Virtual TestNets** with State Sync enabled — 
 
 | Contract | Chain | Address |
 |---|---|---|
-| `SLAEnforcement` | OathLayer VNet (Sepolia fork, 11155111) | `0x8286A8cfA5c8C1872097D9b43E01CbdEe934D319` |
+| `SLAEnforcement` | OathLayer VNet (Sepolia fork, 11155111) | `0x7c8C2E0D488d2785040171f4C087B0EA7637DE91` |
 | `WorldChainRegistry` | OathLayer World Chain VNet (World Chain Sepolia fork, 4801) | `0xe1349d2c44422b70c73bf767afb58ae1c59cd1fd` |
 
 **Tenderly Explorers:**
@@ -394,7 +394,7 @@ cd dashboard && npm run dev
 
 # 3. Fund wallet + register provider via Tenderly impersonation (terminal 3)
 export TENDERLY_RPC=https://virtual.sepolia.eu.rpc.tenderly.co/47ad454d-8109-4ccb-9285-7ab201835e5d
-export SLA=0x8286A8cfA5c8C1872097D9b43E01CbdEe934D319
+export SLA=0x7c8C2E0D488d2785040171f4C087B0EA7637DE91
 export CRE_FWD=0x4B2fF22FFeb81292F8511a8eB370C4F7Aa656d9B
 
 cast rpc tenderly_setBalance <YOUR_ADDRESS> 0x56BC75E2D63100000 --rpc-url $TENDERLY_RPC
