@@ -19,11 +19,12 @@
   --blue-glow: rgba(55,91,210,0.25);
   --cyan: #38bdf8;
   --text: #e2e8f0;
-  --muted: rgba(255,255,255,0.45);
-  --muted-strong: rgba(255,255,255,0.65);
+  --muted: rgba(255,255,255,0.85);
+  --muted-strong: rgba(255,255,255,0.9);
   --red: #ef4444;
   --green: #4ade80;
   --amber: #f59e0b;
+  --purple: #8b5cf6;
 }
 
 html { scroll-behavior: smooth; }
@@ -35,6 +36,7 @@ body {
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
 }
 
@@ -50,21 +52,9 @@ body::after {
 }
 
 /* ═══ BACKGROUND ORBS ═══ */
-.bg-orbs {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.12;
-  animation: orbFloat 20s ease-in-out infinite;
-}
-.orb-1 { width: 600px; height: 600px; background: var(--blue); top: -200px; right: -100px; animation-delay: 0s; }
+.bg-orbs { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.orb { position: absolute; border-radius: 50%; filter: blur(120px); opacity: 0.12; animation: orbFloat 20s ease-in-out infinite; }
+.orb-1 { width: 600px; height: 600px; background: var(--blue); top: -200px; right: -100px; }
 .orb-2 { width: 500px; height: 500px; background: #6366f1; bottom: -150px; left: -100px; animation-delay: -7s; }
 .orb-3 { width: 400px; height: 400px; background: var(--cyan); top: 40%; left: 50%; animation-delay: -14s; opacity: 0.06; }
 
@@ -75,184 +65,67 @@ body::after {
 }
 
 /* ═══ LAYOUT ═══ */
-.deck-wrapper {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  width: 100vw;
-  position: relative;
-  z-index: 1;
-}
-
-.deck {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-}
+.deck-wrapper { display: flex; flex-direction: column; height: 100vh; height: 100dvh; width: 100vw; position: relative; z-index: 1; }
+.deck { position: relative; flex: 1; min-height: 0; }
 
 .slide {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 80px;
-  opacity: 0;
-  pointer-events: none;
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: clamp(1rem, 4vw, 40px) clamp(1.5rem, 6vw, 80px);
+  opacity: 0; pointer-events: none;
   will-change: opacity, transform;
-  transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-              transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.5s cubic-bezier(0.22,1,0.36,1), transform 0.5s cubic-bezier(0.22,1,0.36,1);
+  overflow: hidden;
 }
-
-.slide.active {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
-}
-
-.slide.slide-below {
-  transform: translateY(40px) scale(0.98);
-}
-
-.slide.slide-above {
-  transform: translateY(-40px) scale(0.98);
-}
+.slide.active { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+.slide.slide-below { transform: translateY(40px) scale(0.98); }
+.slide.slide-above { transform: translateY(-40px) scale(0.98); }
 
 /* ═══ SPEAKER NOTES BAR ═══ */
 .notes-bar {
-  flex-shrink: 0;
-  height: 72px;
-  background: rgba(0,0,0,0.5);
-  border-top: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 80px;
-  position: relative;
-  z-index: 10;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  flex-shrink: 0; height: 72px;
+  background: rgba(0,0,0,0.5); border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 80px; position: relative; z-index: 10;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
 }
-.notes-text {
-  font-size: 13px;
-  color: var(--muted-strong);
-  text-align: center;
-  max-width: 900px;
-  line-height: 1.5;
-  transition: opacity 0.4s ease;
-}
-.notes-text strong {
-  color: var(--blue-light);
-  font-weight: 600;
-}
+.notes-text { font-size: 13px; color: var(--muted-strong); text-align: center; max-width: 900px; line-height: 1.5; transition: opacity 0.4s ease; }
+.notes-text strong { color: var(--blue-light); font-weight: 600; }
 
 /* ═══ PROGRESS BAR ═══ */
 .progress-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 2px;
+  position: fixed; top: 0; left: 0; height: 2px;
   background: linear-gradient(90deg, var(--blue), var(--blue-light));
-  z-index: 100;
-  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 100; transition: width 0.4s cubic-bezier(0.22,1,0.36,1);
   box-shadow: 0 0 20px var(--blue-glow);
 }
 
 /* ═══ SLIDE COUNTER ═══ */
-.slide-counter {
-  position: fixed;
-  bottom: 96px;
-  right: 40px;
-  z-index: 100;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
+.slide-counter { position: fixed; bottom: 96px; right: 40px; z-index: 100; font-size: 13px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
 .slide-counter .current { color: #fff; }
 
 /* ═══ NAV HINT ═══ */
-.nav-hint {
-  position: fixed;
-  bottom: 96px;
-  left: 40px;
-  z-index: 100;
-  font-size: 11px;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  opacity: 0.6;
-}
-.nav-hint kbd {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,0.03);
-  font-size: 10px;
-  font-family: inherit;
-  color: var(--muted-strong);
-}
+.nav-hint { position: fixed; bottom: 96px; left: 40px; z-index: 100; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 8px; opacity: 0.6; }
+.nav-hint kbd { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); font-size: 10px; font-family: inherit; color: var(--muted-strong); }
 
 /* ═══ TYPOGRAPHY ═══ */
 h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
-
-.slide-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: var(--blue-light);
-  margin-bottom: 16px;
-}
-
-.slide-title {
-  font-size: clamp(32px, 4.5vw, 56px);
-  font-weight: 600;
-  line-height: 1.1;
-  color: #fff;
-  letter-spacing: -0.025em;
-  text-align: center;
-  max-width: 900px;
-}
-
-.slide-subtitle {
-  font-size: clamp(15px, 1.8vw, 18px);
-  color: var(--muted);
-  line-height: 1.7;
-  text-align: center;
-  max-width: 640px;
-  margin-top: 16px;
-}
+.slide-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.15em; color: var(--blue-light); margin-bottom: 16px; }
+.slide-title { font-size: clamp(28px, 4vw, 52px); font-weight: 600; line-height: 1.1; color: #fff; letter-spacing: -0.025em; text-align: center; max-width: 900px; }
+.slide-subtitle { font-size: clamp(14px, 1.6vw, 17px); color: var(--muted); line-height: 1.7; text-align: center; max-width: 640px; margin-top: 14px; }
 
 /* ═══ GLASS CARD ═══ */
 .card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 28px;
-  transition: border-color 0.3s ease;
-  position: relative;
-  overflow: hidden;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+  padding: 28px; transition: border-color 0.3s ease; position: relative; overflow: hidden;
 }
 .card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 15%;
-  right: 15%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(84,147,247,0.2), transparent);
-  pointer-events: none;
+  content: ''; position: absolute; top: 0; left: 15%; right: 15%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(84,147,247,0.2), transparent); pointer-events: none;
 }
 
 /* ═══ STAGGER ANIMATIONS ═══ */
-.slide.active .stagger { animation: staggerIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.slide.active .stagger { animation: staggerIn 0.5s cubic-bezier(0.22,1,0.36,1) both; }
 .slide.active .stagger:nth-child(1) { animation-delay: 0.1s; }
 .slide.active .stagger:nth-child(2) { animation-delay: 0.18s; }
 .slide.active .stagger:nth-child(3) { animation-delay: 0.26s; }
@@ -261,49 +134,35 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
 .slide.active .stagger:nth-child(6) { animation-delay: 0.50s; }
 .slide.active .stagger:nth-child(7) { animation-delay: 0.58s; }
 .slide.active .stagger:nth-child(8) { animation-delay: 0.66s; }
-
-@keyframes staggerIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+@keyframes staggerIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ═══ BADGE ═══ */
 .badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 16px;
-  border-radius: 100px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid var(--border);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--muted);
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 16px; border-radius: 100px;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  font-size: 12px; font-weight: 500; color: var(--muted);
 }
-.badge-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--green);
-  animation: pulse 2s ease-in-out infinite;
-}
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
+.badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-/* ═══ ICON BOX ═══ */
-.icon-box {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  margin-bottom: 16px;
-  flex-shrink: 0;
+/* ═══ BRAND ICON ═══ */
+.brand-icon {
+  width: 24px; height: 24px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
 }
+.brand-icon img { width: 100%; height: 100%; object-fit: contain; }
+.brand-icon-lg { width: 32px; height: 32px; }
+.brand-icon-xl { width: 40px; height: 40px; }
+
+/* ═══ ICON BOX (with brand icons) ═══ */
+.icon-box {
+  width: 48px; height: 48px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 16px; flex-shrink: 0;
+}
+.icon-box img { width: 24px; height: 24px; }
+.icon-box svg { width: 24px; height: 24px; }
 .icon-box.blue { background: rgba(55,91,210,0.12); }
 .icon-box.cyan { background: rgba(56,189,248,0.12); }
 .icon-box.amber { background: rgba(245,158,11,0.12); }
@@ -311,325 +170,257 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
 .icon-box.green { background: rgba(74,222,128,0.12); }
 .icon-box.purple { background: rgba(139,92,246,0.12); }
 
-/* ═══ FLOW DIAGRAM ═══ */
-.flow {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.flow-step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 20px 16px;
-  min-width: 130px;
-  max-width: 160px;
-}
-.flow-step .step-num {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: rgba(55,91,210,0.15);
-  border: 1px solid rgba(55,91,210,0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--blue-light);
-  margin-bottom: 12px;
-}
-.flow-step .step-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #fff;
-  margin-bottom: 4px;
-}
-.flow-step .step-desc {
-  font-size: 11px;
-  color: var(--muted);
-  line-height: 1.5;
-}
-.flow-arrow {
-  font-size: 18px;
-  color: rgba(55,91,210,0.4);
-  flex-shrink: 0;
-  margin: 0 -4px;
-}
-
-/* ═══ ARCHITECTURE DIAGRAM ═══ */
-.arch-grid {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr auto 1fr;
-  gap: 0;
-  align-items: center;
-  width: 100%;
-  max-width: 1000px;
-}
-.arch-node {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 24px 20px;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-}
-.arch-node::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 20%;
-  right: 20%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--blue-glow), transparent);
-}
-.arch-node h3 {
-  font-size: 15px;
-  color: #fff;
-  margin-bottom: 4px;
-}
-.arch-node .arch-chain {
-  font-size: 11px;
-  color: var(--muted);
-  margin-bottom: 12px;
-}
-.arch-node ul {
-  list-style: none;
-  text-align: left;
-}
-.arch-node ul li {
-  font-size: 12px;
-  color: var(--muted-strong);
-  padding: 4px 0;
-  border-top: 1px solid rgba(255,255,255,0.04);
-}
-.arch-node ul li:first-child { border-top: none; }
-.arch-connector {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 0 8px;
-}
-.arch-connector .line {
-  width: 60px;
-  height: 2px;
-  background: linear-gradient(90deg, var(--blue), var(--blue-light));
-  border-radius: 1px;
-  position: relative;
-}
-.arch-connector .line::after {
-  content: '';
-  position: absolute;
-  right: -4px;
-  top: -3px;
-  width: 0;
-  height: 0;
-  border-left: 6px solid var(--blue-light);
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-}
-.arch-connector span {
-  font-size: 10px;
-  color: var(--muted);
-  white-space: nowrap;
-}
+/* ═══ CUSTOM SVG ICONS (for missing Simple Icons) ═══ */
+.svg-icon { fill: currentColor; }
+.invert-icon { filter: invert(1) brightness(2); }
 
 /* ═══ GRID LAYOUTS ═══ */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; max-width: 880px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; max-width: 960px; }
 .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; width: 100%; max-width: 1000px; }
 
-/* ═══ TECH LOGO ═══ */
-.tech-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: center;
-  max-width: 800px;
-}
-.tech-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 20px;
-  border-radius: 12px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--muted-strong);
-}
-.tech-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  flex-shrink: 0;
-}
-
 /* ═══ TITLE SLIDE ═══ */
-.title-logo {
-  width: 80px;
-  height: 80px;
-  margin-bottom: 24px;
-  animation: logoFloat 4s ease-in-out infinite;
-}
-@keyframes logoFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-.title-name {
-  font-family: 'Clash Display', sans-serif;
-  font-size: clamp(48px, 7vw, 80px);
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  margin-bottom: 12px;
-}
-.title-tagline {
-  font-size: clamp(16px, 2vw, 20px);
-  color: var(--muted);
-  font-weight: 400;
-  max-width: 560px;
-  text-align: center;
-  line-height: 1.6;
-}
+.title-logo { width: 80px; height: 80px; margin-bottom: 24px; animation: logoFloat 4s ease-in-out infinite; }
+@keyframes logoFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.title-name { font-family: 'Clash Display', sans-serif; font-size: clamp(48px, 7vw, 80px); font-weight: 700; color: #fff; letter-spacing: -0.04em; line-height: 1; margin-bottom: 12px; }
+.title-tagline { font-size: clamp(15px, 1.8vw, 19px); color: var(--muted); font-weight: 400; max-width: 560px; text-align: center; line-height: 1.6; }
+
+/* ═══ BADGE ROW (title slide) ═══ */
+.badge-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 40px; }
+.badge-row .badge { font-size: 11px; gap: 6px; }
+.badge-row .badge img { width: 14px; height: 14px; }
 
 /* ═══ PAIN CARDS ═══ */
-.pain-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  width: 100%;
-  max-width: 800px;
-}
+.pain-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; width: 100%; max-width: 800px; }
 .pain-card { padding: 24px; }
-.pain-card .pain-icon { font-size: 24px; margin-bottom: 12px; }
+.pain-card .pain-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+.pain-card .pain-icon svg { width: 20px; height: 20px; }
 .pain-card h3 { font-size: 15px; color: #fff; margin-bottom: 6px; }
 .pain-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
 
-/* ═══ PILLAR ═══ */
+/* ═══ SOLUTION PILLARS ═══ */
 .pillar { padding: 24px; text-align: center; }
 .pillar h3 { font-size: 15px; color: #fff; margin-bottom: 6px; }
 .pillar p { font-size: 12px; color: var(--muted); line-height: 1.6; }
 
-/* ═══ CRE CARDS ═══ */
-.cre-card { padding: 20px; }
-.cre-card h3 { font-size: 13px; color: #fff; margin-bottom: 4px; }
-.cre-card p { font-size: 11px; color: var(--muted); line-height: 1.5; }
-.cre-num {
-  font-family: 'Clash Display', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--blue-light);
-  margin-bottom: 8px;
+/* ═══ ZIGZAG FLOW (How It Works) ═══ */
+.zigzag-flow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  width: 100%;
+  max-width: 880px;
+  position: relative;
+}
+.zigzag-step {
+  padding: 16px;
+  text-align: center;
+  position: relative;
+}
+.zigzag-step .step-label { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+.zigzag-step .step-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.zigzag-step .step-icon { margin: 0 auto 8px; }
+
+/* Connector arrows between zigzag steps */
+.zigzag-connector {
+  position: absolute;
+  color: rgba(55,91,210,0.35);
+  font-size: 18px;
+  z-index: 2;
+}
+/* Row 1: right arrows */
+.zigzag-row { display: contents; }
+.zigzag-arrow-r { position: absolute; right: -12px; top: 50%; transform: translateY(-50%); }
+.zigzag-arrow-d { position: absolute; right: 50%; bottom: -14px; transform: translateX(50%); }
+.zigzag-arrow-l { position: absolute; left: -12px; top: 50%; transform: translateY(-50%); }
+
+/* Flow lines */
+.zigzag-flow::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 0;
 }
 
-/* ═══ AI FLOW ═══ */
-.ai-flow {
+/* ═══ ARCHITECTURE (Layered) ═══ */
+.arch-layers {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  max-width: 900px;
+  flex-direction: column;
+  gap: 0;
   width: 100%;
+  max-width: 920px;
+  position: relative;
 }
-.ai-center {
-  flex-shrink: 0;
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(55,91,210,0.2) 0%, transparent 70%);
-  border: 1px solid rgba(55,91,210,0.3);
+.arch-layer {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 40px;
+  gap: 20px;
+  padding: 16px 0;
   position: relative;
 }
-.ai-center::after {
-  content: '';
-  position: absolute;
-  inset: -8px;
-  border-radius: 50%;
-  border: 1px solid rgba(55,91,210,0.1);
-  animation: aiPulse 3s ease-in-out infinite;
+.arch-node {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 20px; text-align: center; position: relative; overflow: hidden;
+  min-width: 180px; flex: 1; max-width: 280px;
 }
-@keyframes aiPulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.08); opacity: 0.5; }
+.arch-node::before {
+  content: ''; position: absolute; top: 0; left: 20%; right: 20%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--blue-glow), transparent);
+}
+.arch-node h3 { font-size: 14px; color: #fff; margin-bottom: 3px; }
+.arch-node .arch-chain { font-size: 10px; color: var(--muted); margin-bottom: 10px; }
+.arch-node ul { list-style: none; text-align: left; }
+.arch-node ul li { font-size: 11px; color: var(--muted-strong); padding: 3px 0; border-top: 1px solid rgba(255,255,255,0.04); }
+.arch-node ul li:first-child { border-top: none; }
+.arch-node .node-icon { margin-bottom: 8px; }
+
+/* Animated flow lines between arch layers */
+.arch-flow-line {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 6px 0;
+}
+.arch-flow-line .flow-pipe {
+  width: 2px; height: 28px;
+  background: linear-gradient(180deg, var(--blue), var(--blue-light));
+  border-radius: 1px;
+  position: relative;
+}
+.arch-flow-line .flow-pipe::after {
+  content: '';
+  position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 5px solid transparent; border-right: 5px solid transparent;
+  border-top: 6px solid var(--blue-light);
+}
+.arch-flow-line span { font-size: 9px; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; }
+@keyframes flowPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
-/* ═══ BRIDGE VISUAL ═══ */
-.bridge-visual {
+/* Horizontal connector */
+.arch-h-connector {
+  display: flex; align-items: center; gap: 4px; padding: 0 8px; flex-shrink: 0;
+}
+.arch-h-connector .h-line {
+  width: 48px; height: 2px;
+  background: linear-gradient(90deg, var(--blue), var(--blue-light));
+  border-radius: 1px; position: relative;
+}
+.arch-h-connector .h-line::after {
+  content: ''; position: absolute; right: -4px; top: -3px;
+  width: 0; height: 0;
+  border-left: 6px solid var(--blue-light); border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+}
+.arch-h-connector span { font-size: 9px; color: var(--muted); white-space: nowrap; }
+
+/* ═══ CRE CARDS ═══ */
+.cre-card { padding: 18px; }
+.cre-card h3 { font-size: 13px; color: #fff; margin-bottom: 4px; }
+.cre-card p { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.cre-num { font-family: 'Clash Display', sans-serif; font-size: 11px; font-weight: 600; color: var(--blue-light); margin-bottom: 8px; }
+
+/* ═══ AI TRIBUNAL FLOW ═══ */
+.tribunal-flow {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 0;
   width: 100%;
   max-width: 860px;
-  justify-content: center;
 }
-.bridge-node {
-  padding: 20px 24px;
+.tribunal-agent {
+  flex: 1;
+  padding: 16px 12px;
   text-align: center;
-  min-width: 200px;
-}
-.bridge-node h3 { font-size: 14px; color: #fff; margin-bottom: 4px; }
-.bridge-node p { font-size: 11px; color: var(--muted); line-height: 1.5; }
-.bridge-arrow {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0 12px;
-  flex-shrink: 0;
 }
-.bridge-arrow .arrow-line {
-  width: 80px;
-  height: 2px;
-  background: linear-gradient(90deg, var(--blue), var(--blue-light));
-  position: relative;
+.tribunal-agent .agent-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 10px; position: relative;
+  font-size: 13px; font-weight: 700; color: #fff;
 }
-.bridge-arrow .arrow-line::after {
-  content: '';
-  position: absolute;
-  right: -6px;
-  top: -4px;
-  width: 0;
-  height: 0;
-  border-left: 8px solid var(--blue-light);
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
+.tribunal-agent .agent-avatar::after {
+  content: ''; position: absolute; inset: -3px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.08);
 }
-.bridge-arrow span {
-  font-size: 10px;
-  color: var(--muted);
-  margin-top: 6px;
+.agent-analyst .agent-avatar { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); }
+.agent-advocate .agent-avatar { background: rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.3); }
+.agent-judge .agent-avatar { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); }
+.tribunal-agent h3 { font-size: 13px; color: #fff; margin-bottom: 2px; }
+.tribunal-agent .agent-bias { font-size: 9px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.08em; }
+.tribunal-agent .agent-desc { font-size: 11px; color: var(--muted); line-height: 1.4; margin-bottom: 8px; }
+.tribunal-agent .agent-output {
+  margin-top: auto;
+  padding: 5px 10px; border-radius: 6px;
+  font-size: 10px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 4px;
 }
 
-/* ═══ DEMO BROWSER ═══ */
-.browser-frame {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  width: 100%;
+/* Arrow connectors between agents */
+.tribunal-arrow {
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; width: 28px;
+  position: relative;
 }
-.browser-bar {
+.tribunal-arrow .t-line {
+  width: 100%; height: 2px;
+  background: rgba(255,255,255,0.15);
+  position: relative;
+}
+.tribunal-arrow .t-line::after {
+  content: ''; position: absolute; right: -1px; top: -3px;
+  width: 0; height: 0;
+  border-left: 6px solid rgba(255,255,255,0.2); border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+}
+
+/* Verdict output */
+.verdict-box {
+  width: 100%; max-width: 860px;
+  margin-top: 14px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgba(55,91,210,0.06);
+  border: 1px solid rgba(55,91,210,0.15);
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  background: rgba(0,0,0,0.3);
-  border-bottom: 1px solid var(--border);
+  justify-content: center;
+  gap: 16px;
 }
+.verdict-box .v-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.verdict-box .v-result { font-size: 13px; font-weight: 700; font-family: 'Clash Display', sans-serif; }
+.verdict-box .v-action { font-size: 11px; color: var(--muted-strong); }
+
+/* ═══ BRIDGE VISUAL ═══ */
+.bridge-visual { display: flex; align-items: center; gap: 0; width: 100%; max-width: 860px; justify-content: center; }
+.bridge-node { padding: 20px 24px; text-align: center; min-width: 200px; }
+.bridge-node h3 { font-size: 14px; color: #fff; margin-bottom: 4px; }
+.bridge-node p { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.bridge-arrow { display: flex; flex-direction: column; align-items: center; padding: 0 12px; flex-shrink: 0; }
+.bridge-arrow .arrow-line { width: 80px; height: 2px; background: linear-gradient(90deg, var(--blue), var(--blue-light)); position: relative; }
+.bridge-arrow .arrow-line::after { content: ''; position: absolute; right: -6px; top: -4px; width: 0; height: 0; border-left: 8px solid var(--blue-light); border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+.bridge-arrow span { font-size: 10px; color: var(--muted); margin-top: 6px; }
+
+/* ═══ TECH STACK ═══ */
+.tech-grid { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; max-width: 820px; }
+.tech-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 20px; border-radius: 12px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  font-size: 13px; font-weight: 500; color: var(--muted-strong);
+  transition: border-color 0.2s;
+}
+.tech-item:hover { border-color: var(--border-hover); }
+.tech-item img { width: 22px; height: 22px; flex-shrink: 0; }
+.tech-item svg { width: 22px; height: 22px; flex-shrink: 0; }
+
+/* ═══ BROWSER MOCK ═══ */
+.browser-frame { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; width: 100%; }
+.browser-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(0,0,0,0.3); border-bottom: 1px solid var(--border); }
 .browser-dot { width: 8px; height: 8px; border-radius: 50%; }
 .browser-dot.red { background: #ff5f57; }
 .browser-dot.yellow { background: #ffbd2e; }
@@ -650,17 +441,7 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
 
 /* ═══ LINKS ═══ */
 .links-row { display: flex; gap: 12px; margin-top: 24px; }
-.link-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 24px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 500;
-  text-decoration: none;
-  transition: all 0.2s;
-}
+.link-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; border-radius: 10px; font-size: 13px; font-weight: 500; text-decoration: none; transition: all 0.2s; }
 .link-btn.primary { background: var(--blue); color: #fff; }
 .link-btn.primary:hover { background: #4068e0; box-shadow: 0 4px 20px var(--blue-glow); }
 .link-btn.secondary { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--muted-strong); }
@@ -668,19 +449,23 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
 
 /* ═══ RESPONSIVE ═══ */
 @media (max-width: 768px) {
-  .slide { padding: 30px 24px; }
+  .slide { padding: 24px 20px; }
   .notes-bar { height: 60px; padding: 0 24px; }
   .notes-text { font-size: 12px; }
   .grid-3 { grid-template-columns: 1fr; }
   .grid-5 { grid-template-columns: repeat(2, 1fr); }
   .pain-grid { grid-template-columns: 1fr; }
-  .arch-grid { grid-template-columns: 1fr; gap: 12px; }
-  .arch-connector { transform: rotate(90deg); padding: 8px 0; }
-  .flow { flex-direction: column; }
-  .flow-arrow { transform: rotate(90deg); }
+  .zigzag-flow { grid-template-columns: 1fr; }
+  .tribunal-flow { flex-direction: column; }
+  .tribunal-arrow { width: auto; height: 30px; transform: rotate(90deg); }
   .bridge-visual { flex-direction: column; }
   .bridge-arrow { transform: rotate(90deg); }
-  .ai-flow { flex-direction: column; }
+  .arch-layer { flex-direction: column; }
+  .arch-h-connector { transform: rotate(90deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 </style>
 </head>
@@ -701,258 +486,339 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
 </div>
 
 <div class="nav-hint">
-  <kbd>←</kbd><kbd>→</kbd> navigate
+  <kbd>&larr;</kbd><kbd>&rarr;</kbd> navigate
 </div>
 
 <div class="deck-wrapper">
 <div class="deck" id="deck">
 
   <!-- ═══ SLIDE 1: TITLE ═══ -->
-  <div class="slide active" data-slide="0" data-notes="Introduce OathLayer — autonomous SLA enforcement for tokenized real-world assets. Built for the Chainlink CONVERGENCE hackathon targeting 6 prize tracks.">
+  <section class="slide active" data-slide="0" data-notes="Introduce OathLayer — autonomous SLA enforcement for tokenized real-world assets. CRE watches, AI deliberates, smart contracts enforce, humans arbitrate." aria-label="Slide 1 of 11">
     <div class="badge stagger" style="margin-bottom: 32px;">
-      <div class="badge-dot"></div>
       <span>Chainlink CONVERGENCE Hackathon</span>
     </div>
     <img src="./logo-erased.png" alt="OathLayer" class="title-logo stagger">
     <h1 class="title-name stagger">OathLayer</h1>
     <p class="title-tagline stagger">Autonomous SLA Enforcement for Tokenized Real-World Assets</p>
-    <div style="margin-top: 40px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;" class="stagger">
-      <span class="badge" style="font-size: 11px;">Chainlink CRE</span>
-      <span class="badge" style="font-size: 11px;">World ID</span>
-      <span class="badge" style="font-size: 11px;">AI Tribunal</span>
-      <span class="badge" style="font-size: 11px;">Tenderly</span>
+    <div class="badge-row stagger">
+      <span class="badge"><img src="https://cdn.simpleicons.org/chainlink/375BD2" alt="Chainlink" style="width:18px;height:18px;">Chainlink CRE</span>
+      <span class="badge"><img class="invert-icon" src="https://cryptologos.cc/logos/worldcoin-org-wld-logo.svg?v=040" alt="World ID" style="width:18px;height:18px;">World ID</span>
+      <span class="badge">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h.01M12 12h.01M16 12h.01"/><path d="M12 7v0M9 9v0M15 9v0"/></svg>
+        AI Tribunal
+      </span>
+      <span class="badge"><img src="https://dashboard.tenderly.co/static/media/logo-symbol.svg" alt="Tenderly" style="width:18px;height:18px;">Tenderly</span>
     </div>
-  </div>
+  </section>
 
   <!-- ═══ SLIDE 2: PROBLEM ═══ -->
-  <div class="slide slide-below" data-slide="1" data-notes="The RWA market is $500B+ and growing, but service-level agreements are still enforced manually. Providers face no real consequences for breaches. Disputes take weeks through traditional legal channels. There's no proactive monitoring — breaches are only caught after damage is done.">
+  <section class="slide slide-below" data-slide="1" data-notes="The RWA market is $500B+ and growing, but SLAs are still enforced manually. Providers face no consequences. Disputes take weeks. There's no proactive monitoring." aria-label="Slide 2 of 11">
     <span class="slide-label stagger">The Problem</span>
     <h2 class="slide-title stagger">RWA Service Agreements<br>Are Unenforceable</h2>
     <p class="slide-subtitle stagger">$500B+ in tokenized real-world assets with no automated compliance enforcement</p>
-    <div class="pain-grid stagger" style="margin-top: 32px;">
+    <div class="pain-grid stagger" style="margin-top: 28px;">
       <div class="card pain-card stagger">
-        <div class="pain-icon">🔍</div>
+        <div class="pain-icon" style="background: rgba(56,189,248,0.1);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </div>
         <h3>Manual Monitoring</h3>
         <p>Uptime and SLA compliance checked by humans on spreadsheets. Violations go unnoticed for days.</p>
       </div>
       <div class="card pain-card stagger">
-        <div class="pain-icon">⚖️</div>
+        <div class="pain-icon" style="background: rgba(245,158,11,0.1);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
         <h3>No Accountability</h3>
         <p>Providers face zero consequences when they breach SLA terms. No bonded collateral, no automatic penalties.</p>
       </div>
       <div class="card pain-card stagger">
-        <div class="pain-icon">⏳</div>
+        <div class="pain-icon" style="background: rgba(239,68,68,0.1);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
         <h3>Slow Disputes</h3>
         <p>Breach disputes take weeks to resolve. Legal arbitration is expensive and inaccessible for most tenants.</p>
       </div>
       <div class="card pain-card stagger">
-        <div class="pain-icon">🤖</div>
+        <div class="pain-icon" style="background: rgba(139,92,246,0.1);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2" stroke-linecap="round"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+        </div>
         <h3>No Prediction</h3>
         <p>Breaches are detected after they happen. No proactive monitoring or early warning systems exist.</p>
       </div>
     </div>
-  </div>
+  </section>
 
   <!-- ═══ SLIDE 3: SOLUTION ═══ -->
-  <div class="slide slide-below" data-slide="2" data-notes="OathLayer solves this with three pillars: <strong>bonded collateral</strong> so providers have skin in the game, <strong>CRE automation</strong> that monitors 24/7 without human intervention, and an <strong>AI Tribunal Council</strong> — 3 adversarial agents that deliberate before any slashing occurs. Penalties execute automatically — no lawyers, no delays.">
+  <section class="slide slide-below" data-slide="2" data-notes="OathLayer solves this with three pillars: <strong>bonded collateral</strong> so providers have skin in the game, <strong>CRE automation</strong> that monitors 24/7, and an <strong>AI Tribunal Council</strong> — 3 adversarial agents that deliberate before any slashing." aria-label="Slide 3 of 11">
     <span class="slide-label stagger">The Solution</span>
     <h2 class="slide-title stagger">AI-Powered, On-Chain<br>SLA Enforcement</h2>
     <p class="slide-subtitle stagger">Providers bond collateral. CRE monitors 24/7. AI predicts breaches. Penalties auto-execute.</p>
-    <div class="grid-3 stagger" style="margin-top: 32px;">
+    <div class="grid-3 stagger" style="margin-top: 28px;">
       <div class="card pillar stagger">
-        <div class="icon-box blue" style="margin: 0 auto 16px;">🛡️</div>
+        <div class="icon-box blue" style="margin: 0 auto 16px;">
+          <img src="https://cdn.simpleicons.org/ethereum/627EEA" alt="ETH">
+        </div>
         <h3>Bonded Collateral</h3>
         <p>Providers lock ETH as a bond when creating SLAs. Breach penalties are automatically slashed from this bond.</p>
       </div>
       <div class="card pillar stagger">
-        <div class="icon-box cyan" style="margin: 0 auto 16px;">⚡</div>
+        <div class="icon-box cyan" style="margin: 0 auto 16px;">
+          <img src="https://cdn.simpleicons.org/chainlink/375BD2" alt="CRE">
+        </div>
         <h3>CRE Automation</h3>
-        <p>Chainlink CRE monitors uptime every 15 minutes. Breaches trigger instant on-chain penalty execution.</p>
+        <p>Chainlink Compute Runtime Engine monitors uptime every 15 minutes. Breaches trigger instant on-chain enforcement.</p>
       </div>
       <div class="card pillar stagger">
-        <div class="icon-box purple" style="margin: 0 auto 16px;">🧠</div>
+        <div class="icon-box purple" style="margin: 0 auto 16px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round">
+            <path d="M12 2a10 10 0 0 1 0 20 10 10 0 0 1 0-20z"/>
+            <path d="M8 12h.01M12 12h.01M16 12h.01"/>
+            <path d="M12 7v0M9 9v0M15 9v0"/>
+          </svg>
+        </div>
         <h3>AI Tribunal</h3>
-        <p>3 adversarial AI agents — Risk Analyst, Provider Advocate, Enforcement Judge — deliberate before any slashing. No single-model false positives.</p>
+        <p>3 adversarial AI agents deliberate before any slashing. No single-model false positives. All verdicts on-chain.</p>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- ═══ SLIDE 4: HOW IT WORKS ═══ -->
-  <div class="slide slide-below" data-slide="3" data-notes="Walk through the full lifecycle: A provider (cloud/infra company) registers with World ID — proving a unique human controls the wallet (Sybil resistance, not KYC). They create an SLA bonding ETH as collateral. CRE cron jobs monitor uptime every 15 minutes, then the AI Tribunal — 3 agents with competing biases — deliberates. If the tribunal votes breach, the bond is automatically slashed.">
+  <!-- ═══ SLIDE 4: HOW IT WORKS (ZIGZAG) ═══ -->
+  <section class="slide slide-below" data-slide="3" data-notes="Walk through the full lifecycle: Provider registers with World ID (Sybil resistance), CRE runs a compliance check via ConfidentialHTTPClient, provider creates SLA bonding ETH, CRE monitors uptime every 15 min, AI Tribunal deliberates (3 agents), then breach → auto-slash or warning → on-chain record." aria-label="Slide 4 of 11">
     <span class="slide-label stagger">How It Works</span>
-    <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">End-to-End Enforcement Flow</h2>
-    <div class="flow stagger" style="margin-top: 40px;">
-      <div class="flow-step stagger">
-        <div class="step-num">1</div>
+    <h2 class="slide-title stagger" style="font-size: clamp(26px, 3.2vw, 38px);">End-to-End Enforcement Flow</h2>
+    <div class="zigzag-flow stagger" style="margin-top: 32px;">
+      <!-- Row 1: steps 1-3 -->
+      <div class="card zigzag-step stagger" style="padding: 18px 14px;">
+        <div class="cre-num">01</div>
+        <div class="step-icon"><img class="invert-icon" src="https://cryptologos.cc/logos/worldcoin-org-wld-logo.svg?v=040" alt="World ID" width="28" height="28"></div>
         <div class="step-label">Register</div>
-        <div class="step-desc">Provider verifies identity with World ID</div>
+        <div class="step-desc">Provider verifies identity via World ID (Sybil resistance)</div>
       </div>
-      <div class="flow-arrow stagger">→</div>
-      <div class="flow-step stagger">
-        <div class="step-num">2</div>
+      <div class="card zigzag-step stagger" style="padding: 18px 14px;">
+        <div class="cre-num">02</div>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        </div>
+        <div class="step-label">Compliance</div>
+        <div class="step-desc">CRE runs encrypted KYC check via TEE enclaves</div>
+      </div>
+      <div class="card zigzag-step stagger" style="padding: 18px 14px;">
+        <div class="cre-num">03</div>
+        <div class="step-icon"><img src="https://cdn.simpleicons.org/ethereum/627EEA" alt="ETH" width="28" height="28"></div>
         <div class="step-label">Create SLA</div>
-        <div class="step-desc">Define terms, bond ETH as collateral</div>
+        <div class="step-desc">Define uptime terms, bond ETH as collateral</div>
       </div>
-      <div class="flow-arrow stagger">→</div>
-      <div class="flow-step stagger">
-        <div class="step-num">3</div>
-        <div class="step-label">CRE Monitors</div>
-        <div class="step-desc">Cron scans uptime every 15 minutes</div>
+      <!-- Row 2: steps 4-6 -->
+      <div class="card zigzag-step stagger" style="padding: 18px 14px;">
+        <div class="cre-num">04</div>
+        <div class="step-icon"><img src="https://cdn.simpleicons.org/chainlink/375BD2" alt="CRE" width="28" height="28"></div>
+        <div class="step-label">Monitor</div>
+        <div class="step-desc">CRE cron scans all SLAs every 15 minutes</div>
       </div>
-      <div class="flow-arrow stagger">→</div>
-      <div class="flow-step stagger">
-        <div class="step-num">4</div>
+      <div class="card zigzag-step stagger" style="padding: 18px 14px;">
+        <div class="cre-num">05</div>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h.01M12 12h.01M16 12h.01"/><path d="M12 7v0M9 9v0M15 9v0"/></svg>
+        </div>
         <div class="step-label">AI Tribunal</div>
-        <div class="step-desc">3 agents deliberate on breach risk</div>
+        <div class="step-desc">3 adversarial agents deliberate on breach risk</div>
       </div>
-      <div class="flow-arrow stagger">→</div>
-      <div class="flow-step stagger">
-        <div class="step-num">5</div>
-        <div class="step-label">Breach Found</div>
-        <div class="step-desc">Uptime below SLA threshold</div>
-      </div>
-      <div class="flow-arrow stagger">→</div>
-      <div class="flow-step stagger">
-        <div class="step-num">6</div>
-        <div class="step-label">Auto-Slash</div>
-        <div class="step-desc">Bond penalized, tenant compensated</div>
+      <div class="card zigzag-step stagger" style="padding: 18px 14px;">
+        <div class="cre-num">06</div>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <div class="step-label">Enforce</div>
+        <div class="step-desc">Breach &rarr; auto-slash bond. Warning &rarr; on-chain record</div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- ═══ SLIDE 5: ARCHITECTURE ═══ -->
-  <div class="slide slide-below" data-slide="4" data-notes="Three-system architecture spanning two chains plus the CRE DON. <strong>World Chain</strong> handles identity via World ID ZK proofs. <strong>CRE Workflows</strong> bridge identity cross-chain, run cron monitoring, and orchestrate the AI Tribunal Council (3 adversarial agents). <strong>Sepolia VNet</strong> hosts the enforcement contract with bond management and breach recording.">
+  <!-- ═══ SLIDE 5: ARCHITECTURE (Layered) ═══ -->
+  <section class="slide slide-below" data-slide="4" data-notes="Three-layer architecture. <strong>World Chain</strong> handles identity via World ID ZK proofs. <strong>CRE DON</strong> bridges identity cross-chain, runs cron monitoring, orchestrates AI Tribunal. <strong>Sepolia VNet</strong> hosts the enforcement contract. All connected by animated data flows." aria-label="Slide 5 of 11">
     <span class="slide-label stagger">Architecture</span>
-    <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">Cross-Chain System Design</h2>
-    <div class="arch-grid stagger" style="margin-top: 36px;">
-      <div class="arch-node stagger">
-        <div style="font-size: 24px; margin-bottom: 8px;">🌐</div>
-        <h3>World Chain</h3>
-        <div class="arch-chain">Chain ID: 4801</div>
-        <ul>
-          <li>WorldChainRegistry</li>
-          <li>World ID ZK Proofs</li>
-          <li>Provider Registration</li>
-          <li>Arbitrator Registration</li>
-        </ul>
+    <h2 class="slide-title stagger" style="font-size: clamp(26px, 3.2vw, 38px);">Cross-Chain System Design</h2>
+    <div class="arch-layers stagger" style="margin-top: 24px;">
+      <!-- Layer 1: CRE (top - the orchestrator) -->
+      <div class="arch-layer stagger">
+        <div class="arch-node" style="border-color: rgba(55,91,210,0.25); max-width: 360px;">
+          <div class="node-icon"><img src="https://cdn.simpleicons.org/chainlink/375BD2" alt="CRE" width="28" height="28"></div>
+          <h3>Chainlink CRE</h3>
+          <div class="arch-chain">Oracle &middot; Automation &middot; AI</div>
+          <p style="font-size: 11px; color: var(--muted); line-height: 1.5; margin-top: 6px;">Monitors uptime, runs AI Tribunal, relays identity cross-chain, enforces penalties</p>
+        </div>
       </div>
-      <div class="arch-connector stagger">
-        <div class="line"></div>
-        <span>CRE Relay</span>
+
+      <!-- Flow lines down to both chains -->
+      <div class="arch-flow-line stagger">
+        <span>orchestrates</span>
+        <div class="flow-pipe"></div>
       </div>
-      <div class="arch-node stagger" style="border-color: rgba(55,91,210,0.2);">
-        <div style="font-size: 24px; margin-bottom: 8px;">⚡</div>
-        <h3>CRE Workflows</h3>
-        <div class="arch-chain">Chainlink DON</div>
-        <ul>
-          <li>Cron (15min scans)</li>
-          <li>AI Tribunal Council</li>
-          <li>ConfidHTTP (TEE)</li>
-          <li>Event reactions</li>
-        </ul>
+
+      <!-- Layer 2: Two chains side by side -->
+      <div class="arch-layer stagger">
+        <div class="arch-node">
+          <div class="node-icon"><img class="invert-icon" src="https://cryptologos.cc/logos/worldcoin-org-wld-logo.svg?v=040" alt="World Chain" width="24" height="24"></div>
+          <h3>World Chain</h3>
+          <div class="arch-chain">Identity &middot; Registration</div>
+          <p style="font-size: 11px; color: var(--muted); line-height: 1.5; margin-top: 6px;">World ID ZK proofs for provider &amp; arbitrator identity</p>
+        </div>
+
+        <div class="arch-h-connector stagger">
+          <div class="h-line"></div>
+          <span style="position: absolute; top: -14px; font-size: 9px; color: var(--muted);">CRE Relay</span>
+        </div>
+
+        <div class="arch-node">
+          <div class="node-icon"><img src="https://cdn.simpleicons.org/ethereum/627EEA" alt="Sepolia" width="24" height="24"></div>
+          <h3>Sepolia VNet</h3>
+          <div class="arch-chain">Enforcement &middot; Bonds &middot; SLAs</div>
+          <p style="font-size: 11px; color: var(--muted); line-height: 1.5; margin-top: 6px;">Smart contract manages bonds, breaches, and compliance gates</p>
+        </div>
       </div>
-      <div class="arch-connector stagger">
-        <div class="line"></div>
-        <span>Enforce</span>
+
+      <!-- Flow line down to off-chain -->
+      <div class="arch-flow-line stagger">
+        <span>indexes</span>
+        <div class="flow-pipe"></div>
       </div>
-      <div class="arch-node stagger">
-        <div style="font-size: 24px; margin-bottom: 8px;">🔒</div>
-        <h3>Sepolia VNet</h3>
-        <div class="arch-chain">Tenderly Fork</div>
-        <ul>
-          <li>SLAEnforcement</li>
-          <li>Bond Management</li>
-          <li>Breach Recording</li>
-          <li>Compliance Gate</li>
-        </ul>
+
+      <!-- Layer 3: Off-chain -->
+      <div class="arch-layer stagger">
+        <div class="arch-node" style="max-width: 360px; border-color: rgba(255,255,255,0.04);">
+          <div class="node-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--muted-strong)" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+          </div>
+          <h3>Dashboard &amp; Mini App</h3>
+          <div class="arch-chain">Monitoring &middot; Mobile</div>
+          <p style="font-size: 11px; color: var(--muted); line-height: 1.5; margin-top: 6px;">Live SLA dashboard, AI verdict history, World Mini App for mobile</p>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
 
   <!-- ═══ SLIDE 6: CRE INTEGRATION ═══ -->
-  <div class="slide slide-below" data-slide="5" data-notes="<strong>This is the key slide for judges.</strong> We use all 5 CRE capabilities: Cron triggers for scheduled monitoring, EVM Log triggers for reactive event handling, ConfidentialHTTPClient for TEE-encrypted API calls (provider PII never visible to DON nodes), Secrets vault for threshold-encrypted API keys, and cross-chain relay to bridge World ID proofs from World Chain to Sepolia.">
+  <section class="slide slide-below" data-slide="5" data-notes="<strong>Key slide for judges.</strong> We use 5 CRE capabilities: Cron triggers for scheduled monitoring, EVM Log triggers for reactive event handling, ConfidentialHTTPClient for TEE-encrypted API calls, Secrets vault for threshold-encrypted API keys, and cross-chain relay to bridge World ID proofs from World Chain to Sepolia." aria-label="Slide 6 of 11">
     <span class="slide-label stagger">Chainlink CRE</span>
-    <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">5 CRE Capabilities Used</h2>
-    <p class="slide-subtitle stagger">Deep integration across the full CRE feature set</p>
-    <div class="grid-5 stagger" style="margin-top: 28px;">
-      <div class="card cre-card stagger">
+    <h2 class="slide-title stagger" style="font-size: clamp(26px, 3.2vw, 38px);">5 CRE Capabilities Used</h2>
+    <p class="slide-subtitle stagger">Deep integration across the full Compute Runtime Engine feature set</p>
+    <div class="grid-5 stagger" style="margin-top: 24px;">
+      <div class="card zigzag-step stagger" style="padding: 18px 14px;">
         <div class="cre-num">01</div>
-        <div class="icon-box blue" style="width: 32px; height: 32px; font-size: 14px; margin-bottom: 10px;">⏰</div>
-        <h3>Cron Trigger</h3>
-        <p>Scans all active SLAs every 15 minutes for uptime compliance</p>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--blue-light)" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="step-label">Cron Trigger</div>
+        <div class="step-desc">Scans all SLAs every 15 minutes for uptime compliance</div>
       </div>
-      <div class="card cre-card stagger">
+      <div class="card zigzag-step stagger" style="padding: 18px 14px;">
         <div class="cre-num">02</div>
-        <div class="icon-box cyan" style="width: 32px; height: 32px; font-size: 14px; margin-bottom: 10px;">📡</div>
-        <h3>EVM Log Trigger</h3>
-        <p>Reacts to ClaimFiled, ProviderReg, ArbitratorReg events</p>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.5" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+        <div class="step-label">EVM Log Trigger</div>
+        <div class="step-desc">Reacts to claims, registrations, and on-chain events</div>
       </div>
-      <div class="card cre-card stagger">
+      <div class="card zigzag-step stagger" style="padding: 18px 14px;">
         <div class="cre-num">03</div>
-        <div class="icon-box green" style="width: 32px; height: 32px; font-size: 14px; margin-bottom: 10px;">🔐</div>
-        <h3>ConfidHTTP</h3>
-        <p>Encrypted KYC checks via TEE enclaves — PII never exposed</p>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        </div>
+        <div class="step-label">ConfidentialHTTPClient</div>
+        <div class="step-desc">Encrypted KYC via TEE — PII never exposed to DON nodes</div>
       </div>
-      <div class="card cre-card stagger">
+      <div class="card zigzag-step stagger" style="padding: 18px 14px;">
         <div class="cre-num">04</div>
-        <div class="icon-box amber" style="width: 32px; height: 32px; font-size: 14px; margin-bottom: 10px;">🗝️</div>
-        <h3>Secrets Vault</h3>
-        <p>AI, Compliance, Uptime API keys threshold-encrypted</p>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-linecap="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        </div>
+        <div class="step-label">Secrets Vault</div>
+        <div class="step-desc">API keys threshold-encrypted across DON nodes</div>
       </div>
-      <div class="card cre-card stagger">
+      <div class="card zigzag-step stagger" style="padding: 18px 14px;">
         <div class="cre-num">05</div>
-        <div class="icon-box purple" style="width: 32px; height: 32px; font-size: 14px; margin-bottom: 10px;">🌉</div>
-        <h3>Cross-Chain</h3>
-        <p>World Chain → Sepolia identity relay via CRE forwarder</p>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.5" stroke-linecap="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+        </div>
+        <div class="step-label">Cross-Chain Relay</div>
+        <div class="step-desc">World Chain &rarr; Sepolia identity bridge via CRE forwarder</div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- ═══ SLIDE 7: AI INTEGRATION ═══ -->
-  <div class="slide slide-below" data-slide="6" data-notes="The AI Tribunal Council prevents false positives from single-model hallucinations. Three agents with different biases deliberate sequentially: the Risk Analyst evaluates data objectively, the Provider Advocate argues for the provider using historical trends, and the Enforcement Judge weighs both arguments before casting the tiebreaker vote. Unanimous breach triggers slashing; majority triggers a warning. The model is swappable — architecture is provider-agnostic.">
+  <!-- ═══ SLIDE 7: AI TRIBUNAL ═══ -->
+  <section class="slide slide-below" data-slide="6" data-notes="The AI Tribunal prevents false positives from single-model hallucinations. Three agents deliberate sequentially: <strong>Risk Analyst</strong> evaluates data, <strong>Provider Advocate</strong> argues for the provider using historical trends, <strong>Enforcement Judge</strong> weighs both and casts tiebreaker vote (1.5x weight). All verdicts recorded on-chain — including CLEAR with riskScore=0." aria-label="Slide 7 of 11">
     <span class="slide-label stagger">AI Integration</span>
-    <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">AI Tribunal Council</h2>
-    <p class="slide-subtitle stagger">3 adversarial agents deliberate before any slashing occurs</p>
-    <div class="ai-flow stagger" style="margin-top: 28px;">
-      <div class="card stagger" style="flex: 1; padding: 20px; text-align: center;">
-        <div style="font-size: 24px; margin-bottom: 8px;">📊</div>
-        <h3 style="font-size: 14px; color: #fff; margin-bottom: 6px;">Risk Analyst</h3>
-        <p style="font-size: 11px; color: var(--muted-strong);">Data-driven, neutral. Evaluates metrics against SLA thresholds.</p>
-        <div style="margin-top: 10px; padding: 4px 10px; border-radius: 4px; background: rgba(239,68,68,0.1); color: #ef4444; font-size: 11px; display: inline-block;">BREACH · 0.85</div>
+    <h2 class="slide-title stagger" style="font-size: clamp(26px, 3.2vw, 38px);">AI Tribunal Council</h2>
+    <p class="slide-subtitle stagger">3 adversarial agents deliberate sequentially before any slashing occurs</p>
+
+    <div class="tribunal-flow stagger" style="margin-top: 20px;">
+      <div class="card tribunal-agent agent-analyst stagger">
+        <div class="agent-avatar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+        </div>
+        <h3>Risk Analyst</h3>
+        <div class="agent-bias">Data-driven &middot; Neutral</div>
+        <div class="agent-desc">Evaluates raw metrics against SLA thresholds</div>
+        <div class="agent-output" style="background: rgba(239,68,68,0.1); color: #ef4444;">BREACH &middot; 0.85</div>
       </div>
-      <div class="ai-center stagger" style="font-size: 16px;">→</div>
-      <div class="card stagger" style="flex: 1; padding: 20px; text-align: center;">
-        <div style="font-size: 24px; margin-bottom: 8px;">🛡️</div>
-        <h3 style="font-size: 14px; color: #fff; margin-bottom: 6px;">Provider Advocate</h3>
-        <p style="font-size: 11px; color: var(--muted-strong);">Biased to protect. Finds mitigating factors and false positive indicators.</p>
-        <div style="margin-top: 10px; padding: 4px 10px; border-radius: 4px; background: rgba(74,222,128,0.1); color: #4ade80; font-size: 11px; display: inline-block;">NO_BREACH · 0.60</div>
+
+      <div class="tribunal-arrow stagger"><div class="t-line"></div></div>
+
+      <div class="card tribunal-agent agent-advocate stagger">
+        <div class="agent-avatar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3>Provider Advocate</h3>
+        <div class="agent-bias">Biased to protect</div>
+        <div class="agent-desc">Sees Analyst output + 7-day history. Finds mitigating factors</div>
+        <div class="agent-output" style="background: rgba(74,222,128,0.1); color: #4ade80;">NO_BREACH &middot; 0.60</div>
       </div>
-      <div class="ai-center stagger" style="font-size: 16px;">→</div>
-      <div class="card stagger" style="flex: 1; padding: 20px; text-align: center;">
-        <div style="font-size: 24px; margin-bottom: 8px;">⚖️</div>
-        <h3 style="font-size: 14px; color: #fff; margin-bottom: 6px;">Enforcement Judge</h3>
-        <p style="font-size: 11px; color: var(--muted-strong);">Weighs both arguments. Tiebreaker vote with 1.5x weight.</p>
-        <div style="margin-top: 10px; padding: 4px 10px; border-radius: 4px; background: rgba(245,158,11,0.1); color: #f59e0b; font-size: 11px; display: inline-block;">WARNING · 0.70</div>
+
+      <div class="tribunal-arrow stagger"><div class="t-line"></div></div>
+
+      <div class="card tribunal-agent agent-judge stagger">
+        <div class="agent-avatar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <h3>Enforcement Judge</h3>
+        <div class="agent-bias">Tiebreaker &middot; 1.5x weight</div>
+        <div class="agent-desc">Sees both arguments. Weighs evidence. Casts deciding vote</div>
+        <div class="agent-output" style="background: rgba(245,158,11,0.1); color: #f59e0b;">WARNING &middot; 0.70</div>
       </div>
     </div>
-    <div class="grid-2 stagger" style="margin-top: 20px; max-width: 900px;">
-      <div class="card stagger" style="padding: 16px;">
-        <div style="font-size: 12px; color: var(--muted-strong);"><strong style="color: #fff;">Adversarial by Design</strong> — The Advocate's job is to argue against slashing. False positives from a single model can't wrongfully penalize providers.</div>
+
+    <!-- Verdict output -->
+    <div class="verdict-box stagger">
+      <div>
+        <div class="v-label">Tally</div>
+        <div class="v-result" style="color: var(--amber);">2-1 WARNING</div>
       </div>
-      <div class="card stagger" style="padding: 16px;">
-        <div style="font-size: 12px; color: var(--muted-strong);"><strong style="color: #fff;">TEE Protected</strong> — API keys encrypted via ConfidentialHTTPClient. Model-agnostic — swap any LLM provider without architecture changes.</div>
+      <div style="width: 1px; height: 28px; background: var(--border);"></div>
+      <div>
+        <div class="v-label">Action</div>
+        <div class="v-action">Warning recorded on-chain with risk score &amp; reasoning</div>
+      </div>
+      <div style="width: 1px; height: 28px; background: var(--border);"></div>
+      <div>
+        <div class="v-label">All Possible Outcomes</div>
+        <div class="v-action" style="display: flex; gap: 10px;">
+          <span style="color: var(--red);">3-0 Breach &rarr; Slash bond</span>
+          <span style="color: var(--amber);">Majority &rarr; Warning on-chain</span>
+          <span style="color: var(--green);">0-3 Clear &rarr; Record on-chain</span>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
 
   <!-- ═══ SLIDE 8: WORLD ID + CRE ═══ -->
-  <div class="slide slide-below" data-slide="7" data-notes="This is a <strong>novel pattern</strong>: using CRE as an identity bridge. World ID proofs don't natively exist on Sepolia. The user verifies on World Chain via MiniKit, CRE picks up the ProviderRegistrationRequested event, runs a ConfidHTTP KYC check, then relays the result to Sepolia via setComplianceStatus(). This brings Sybil-resistant identity to any EVM chain.">
+  <section class="slide slide-below" data-slide="7" data-notes="<strong>Novel pattern</strong>: CRE as an identity bridge. World ID proofs don't natively exist on Sepolia. User verifies on World Chain via MiniKit, CRE picks up the event, runs a ConfidHTTP KYC check, then relays the result to Sepolia. This brings Sybil-resistant identity to any EVM chain." aria-label="Slide 8 of 11">
     <span class="slide-label stagger">World ID + CRE</span>
-    <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">Cross-Chain Identity Bridge</h2>
+    <h2 class="slide-title stagger" style="font-size: clamp(26px, 3.2vw, 38px);">Cross-Chain Identity Bridge</h2>
     <p class="slide-subtitle stagger">CRE as an identity relay — not just a token bridge</p>
-    <div class="bridge-visual stagger" style="margin-top: 36px;">
+    <div class="bridge-visual stagger" style="margin-top: 32px;">
       <div class="card bridge-node stagger">
-        <div style="font-size: 28px; margin-bottom: 8px;">🌐</div>
+        <div style="margin-bottom: 8px;"><img class="invert-icon" src="https://cryptologos.cc/logos/worldcoin-org-wld-logo.svg?v=040" alt="World Chain" width="32" height="32"></div>
         <h3>World Chain</h3>
         <p>User verifies via World ID MiniKit.<br>ZK proof emitted as event.</p>
       </div>
@@ -961,7 +827,7 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
         <span>CRE listens</span>
       </div>
       <div class="card bridge-node stagger" style="border-color: rgba(55,91,210,0.2);">
-        <div style="font-size: 28px; margin-bottom: 8px;">⚡</div>
+        <div style="margin-bottom: 8px;"><img src="https://cdn.simpleicons.org/chainlink/375BD2" alt="CRE" width="32" height="32"></div>
         <h3>CRE DON</h3>
         <p>Picks up ProviderRegRequested.<br>Runs ConfidHTTP KYC check.</p>
       </div>
@@ -970,29 +836,29 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
         <span>Relay result</span>
       </div>
       <div class="card bridge-node stagger">
-        <div style="font-size: 28px; margin-bottom: 8px;">🔒</div>
+        <div style="margin-bottom: 8px;"><img src="https://cdn.simpleicons.org/ethereum/627EEA" alt="Sepolia" width="32" height="32"></div>
         <h3>Sepolia</h3>
         <p>setComplianceStatus() called.<br>Sybil-resistant identity on any chain.</p>
       </div>
     </div>
-    <div class="card stagger" style="margin-top: 24px; padding: 16px 24px; max-width: 680px; text-align: center;">
+    <div class="card stagger" style="margin-top: 20px; padding: 14px 24px; max-width: 680px; text-align: center;">
       <p style="font-size: 13px; color: var(--muted-strong);">
         <strong style="color: var(--blue-light);">Novel pattern:</strong> World ID proofs don't natively exist on Sepolia. CRE bridges identity proofs cross-chain — enabling Sybil resistance on any EVM chain.
       </p>
     </div>
-  </div>
+  </section>
 
   <!-- ═══ SLIDE 9: LIVE DEMO ═══ -->
-  <div class="slide slide-below" data-slide="8" data-notes="Everything is live on Tenderly VNet. Walk through the demo: landing page, connect wallet, register as provider, create an SLA with bonded ETH, watch AI breach warnings appear, trigger a breach, see the bond get slashed. The Mini App runs inside World App on mobile for provider registration and claim filing. All transactions are publicly verifiable on Tenderly Explorer.">
+  <section class="slide slide-below" data-slide="8" data-notes="Everything is live on Tenderly VNet. Walk through: landing page, connect wallet, register provider, create SLA with bonded ETH, watch AI breach warnings appear, trigger breach, see bond get slashed. Mini App runs inside World App for mobile registration. All transactions verifiable on Tenderly Explorer." aria-label="Slide 9 of 11">
     <span class="slide-label stagger">Live Demo</span>
-    <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">Working Product on Tenderly VNet</h2>
-    <div class="grid-2 stagger" style="margin-top: 28px; max-width: 960px;">
+    <h2 class="slide-title stagger" style="font-size: clamp(26px, 3.2vw, 38px);">Working Product on Tenderly VNet</h2>
+    <div class="grid-2 stagger" style="margin-top: 24px; max-width: 960px;">
       <div class="browser-frame stagger">
         <div class="browser-bar">
           <div class="browser-dot red"></div>
           <div class="browser-dot yellow"></div>
           <div class="browser-dot green"></div>
-          <div class="browser-url">oathlayer.vercel.app/dashboard</div>
+          <a href="https://oathlayer-protocol.vercel.app" target="_blank" rel="noreferrer" class="browser-url" style="text-decoration: none; color: inherit; cursor: pointer;">oathlayer-protocol.vercel.app ↗</a>
         </div>
         <div class="browser-content">
           <div style="font-size: 13px; font-weight: 600; color: #fff;">Dashboard</div>
@@ -1020,46 +886,51 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
         <div class="card stagger" style="padding: 16px;">
           <div style="font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 6px;">Demo Flow</div>
           <div style="display: flex; flex-direction: column; gap: 6px;">
-            <div style="font-size: 12px; color: var(--muted-strong); display: flex; gap: 8px;"><span style="color: var(--blue-light);">1.</span> Landing page → Open Dashboard</div>
+            <div style="font-size: 12px; color: var(--muted-strong); display: flex; gap: 8px;"><span style="color: var(--blue-light);">1.</span> Landing page &rarr; Open Dashboard</div>
             <div style="font-size: 12px; color: var(--muted-strong); display: flex; gap: 8px;"><span style="color: var(--blue-light);">2.</span> Register provider with World ID</div>
-            <div style="font-size: 12px; color: var(--muted-strong); display: flex; gap: 8px;"><span style="color: var(--blue-light);">3.</span> Create SLA — bond 1 ETH</div>
-            <div style="font-size: 12px; color: var(--muted-strong); display: flex; gap: 8px;"><span style="color: var(--blue-light);">4.</span> AI breach warning appears</div>
+            <div style="font-size: 12px; color: var(--muted-strong); display: flex; gap: 8px;"><span style="color: var(--blue-light);">3.</span> Create SLA &mdash; bond 1 ETH</div>
+            <div style="font-size: 12px; color: var(--muted-strong); display: flex; gap: 8px;"><span style="color: var(--blue-light);">4.</span> AI Tribunal deliberates (3 agents)</div>
             <div style="font-size: 12px; color: var(--muted-strong); display: flex; gap: 8px;"><span style="color: var(--blue-light);">5.</span> Bond slashed automatically</div>
             <div style="font-size: 12px; color: var(--muted-strong); display: flex; gap: 8px;"><span style="color: var(--blue-light);">6.</span> Verify on Tenderly Explorer</div>
           </div>
         </div>
         <div class="card stagger" style="padding: 16px; border-color: rgba(55,91,210,0.15);">
-          <div style="font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 4px;">📱 Mini App</div>
+          <div style="font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+            <img class="invert-icon" src="https://cryptologos.cc/logos/worldcoin-org-wld-logo.svg?v=040" alt="" width="16" height="16"> Mini App
+          </div>
           <div style="font-size: 12px; color: var(--muted);">Provider registration + claim filing via World App mobile browser. World ID MiniKit integration.</div>
         </div>
         <div class="card stagger" style="padding: 16px;">
-          <div style="font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 4px;">🔎 Tenderly Explorer</div>
+          <div style="font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+            <img src="https://dashboard.tenderly.co/static/media/logo-symbol.svg" alt="" width="16" height="16"> Tenderly Explorer
+          </div>
           <div style="font-size: 12px; color: var(--muted);">All CRE transactions publicly verifiable. No wallet needed to inspect on-chain state.</div>
         </div>
       </div>
     </div>
-  </div>
+  </section>
 
   <!-- ═══ SLIDE 10: TECH STACK ═══ -->
-  <div class="slide slide-below" data-slide="9" data-notes="Full-stack Web3 project: Foundry contracts with 22 tests, 4 CRE workflow handlers spanning 2 chains, Next.js dashboard with wagmi and RainbowKit, plus a World Mini App for mobile. Every layer is integrated end-to-end — from identity verification to automated breach enforcement.">
+  <section class="slide slide-below" data-slide="9" data-notes="Full-stack Web3 project: Foundry smart contracts, CRE workflow handlers spanning 2 chains, Next.js dashboard with wagmi, plus a World Mini App for mobile. Every layer integrated end-to-end." aria-label="Slide 10 of 11">
     <span class="slide-label stagger">Tech Stack</span>
-    <h2 class="slide-title stagger" style="font-size: clamp(28px, 3.5vw, 40px);">Built With</h2>
-    <div class="tech-grid stagger" style="margin-top: 32px;">
-      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(55,91,210,0.12);">⚡</div>Chainlink CRE SDK</div>
-      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(239,68,68,0.12);">🔨</div>Foundry</div>
-      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(139,92,246,0.12);">🧠</div>AI Tribunal Council</div>
-      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(74,222,128,0.12);">🌐</div>World ID / MiniKit</div>
-      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(245,158,11,0.12);">🧪</div>Tenderly VNets</div>
-      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(56,189,248,0.12);">⚛️</div>Next.js</div>
-      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(255,255,255,0.06);">🔗</div>wagmi + viem</div>
-      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(99,102,241,0.12);">🌈</div>RainbowKit</div>
-      <div class="tech-item stagger"><div class="tech-icon" style="background: rgba(255,255,255,0.06);">📱</div>World Mini App SDK</div>
-    </div>
-    <div class="grid-3 stagger" style="margin-top: 24px; max-width: 800px;">
-      <div class="card stagger" style="padding: 16px; text-align: center;">
-        <div style="font-family: 'Clash Display'; font-size: 28px; font-weight: 700; color: #fff;">22</div>
-        <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Contract Tests</div>
+    <h2 class="slide-title stagger" style="font-size: clamp(26px, 3.2vw, 38px);">Built With</h2>
+    <div class="tech-grid stagger" style="margin-top: 28px;">
+      <div class="tech-item stagger"><img src="https://cdn.simpleicons.org/chainlink/375BD2" alt="Chainlink">Chainlink CRE SDK</div>
+      <div class="tech-item stagger"><img src="https://cdn.simpleicons.org/solidity/ffffff" alt="Solidity">Solidity (Foundry)</div>
+      <div class="tech-item stagger">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h.01M12 12h.01M16 12h.01"/><path d="M12 7v0M9 9v0M15 9v0"/></svg>
+        AI Tribunal Council
       </div>
+      <div class="tech-item stagger"><img class="invert-icon" src="https://cryptologos.cc/logos/worldcoin-org-wld-logo.svg?v=040" alt="World ID">World ID / MiniKit</div>
+      <div class="tech-item stagger"><img src="https://dashboard.tenderly.co/static/media/logo-symbol.svg" alt="Tenderly">Tenderly VNets</div>
+      <div class="tech-item stagger"><img src="https://cdn.simpleicons.org/nextdotjs/ffffff" alt="Next.js">Next.js</div>
+      <div class="tech-item stagger"><img src="https://cdn.simpleicons.org/wagmi/ffffff" alt="wagmi">wagmi + viem</div>
+      <div class="tech-item stagger">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+        World Mini App SDK
+      </div>
+    </div>
+    <div class="grid-2 stagger" style="margin-top: 20px; max-width: 520px;">
       <div class="card stagger" style="padding: 16px; text-align: center;">
         <div style="font-family: 'Clash Display'; font-size: 28px; font-weight: 700; color: #fff;">4</div>
         <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">CRE Handlers</div>
@@ -1069,24 +940,30 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
         <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Chains</div>
       </div>
     </div>
-  </div>
+  </section>
 
   <!-- ═══ SLIDE 11: THANK YOU ═══ -->
-  <div class="slide slide-below" data-slide="10" data-notes="Thank you! OathLayer demonstrates that CRE can power autonomous compliance infrastructure for real-world assets — combining identity, AI prediction, and automated enforcement in a single system. All code is open source, all transactions are verifiable on Tenderly Explorer.">
+  <section class="slide slide-below" data-slide="10" data-notes="Thank you! OathLayer demonstrates CRE can power autonomous compliance infrastructure for real-world assets — combining identity, AI prediction, and automated enforcement. All code open source, all transactions verifiable on Tenderly Explorer." aria-label="Slide 11 of 11">
     <img src="./logo-erased.png" alt="OathLayer" class="title-logo stagger" style="width: 64px; height: 64px;">
     <h2 class="title-name stagger" style="font-size: clamp(36px, 5vw, 56px);">OathLayer</h2>
-    <p class="slide-subtitle stagger" style="margin-top: 8px;">Autonomous SLA enforcement, powered by Chainlink CRE.</p>
+    <p class="slide-subtitle stagger" style="margin-top: 8px;">CRE watches. AI deliberates. Smart contracts enforce. Humans arbitrate.</p>
     <div class="links-row stagger" style="margin-top: 32px;">
-      <a href="https://github.com/oathlayer-protocol/oathkeeper" class="link-btn secondary" target="_blank">GitHub</a>
-      <a href="https://dashboard.tenderly.co/robbyn/project/testnet/5c780e4f-4df5-4a50-b221-2342cd4b713e" class="link-btn secondary" target="_blank">Tenderly Explorer</a>
-      <a href="/dashboard" class="link-btn primary">Live Dashboard →</a>
+      <a href="https://github.com/oathlayer-protocol" class="link-btn secondary" target="_blank">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--muted-strong)"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+      <a href="https://dashboard.tenderly.co/robbyn/project/testnet/5c780e4f-4df5-4a50-b221-2342cd4b713e" class="link-btn secondary" target="_blank">
+        <img src="https://dashboard.tenderly.co/static/media/logo-symbol.svg" alt="" width="16" height="16">
+        Tenderly Explorer
+      </a>
+      <a href="/dashboard" class="link-btn primary">Live Dashboard &rarr;</a>
     </div>
     <div style="margin-top: 48px; text-align: center;" class="stagger">
       <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">Built for</div>
       <div style="font-size: 15px; font-weight: 600; color: #fff;">Chainlink CONVERGENCE Hackathon</div>
       <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">March 2026</div>
     </div>
-  </div>
+  </section>
 
 </div>
 
@@ -1124,20 +1001,16 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
 
     const goingForward = index > current;
 
-    // Remove active from current slide, position it off-screen
     slides[current].classList.remove('active');
     slides[current].classList.remove('slide-below', 'slide-above');
     slides[current].classList.add(goingForward ? 'slide-above' : 'slide-below');
 
-    // Position new slide on the correct side first (no transition)
     slides[index].style.transition = 'none';
     slides[index].classList.remove('slide-above', 'slide-below');
     slides[index].classList.add(goingForward ? 'slide-below' : 'slide-above');
 
-    // Force reflow
-    slides[index].offsetHeight;
+    slides[index].offsetHeight; // force reflow
 
-    // Now animate it in
     slides[index].style.transition = '';
     slides[index].classList.remove('slide-below', 'slide-above');
     slides[index].classList.add('active');
@@ -1150,36 +1023,24 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
     setTimeout(() => { transitioning = false; }, 500);
   }
 
-  // Init notes for first slide
+  // Init
   updateNotes(0);
 
   // Keyboard
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
-      e.preventDefault();
-      goTo(current + 1);
-    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      goTo(current - 1);
-    } else if (e.key === 'Home') {
-      e.preventDefault();
-      goTo(0);
-    } else if (e.key === 'End') {
-      e.preventDefault();
-      goTo(total - 1);
-    }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); goTo(current + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goTo(current - 1); }
+    else if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+    else if (e.key === 'End') { e.preventDefault(); goTo(total - 1); }
   });
 
-  // Click to advance (left half = prev, right half = next)
+  // Click navigation
   document.addEventListener('click', (e) => {
     if (e.target.closest('a')) return;
     if (e.target.closest('.notes-bar')) return;
     const x = e.clientX;
-    if (x > window.innerWidth * 0.5) {
-      goTo(current + 1);
-    } else {
-      goTo(current - 1);
-    }
+    if (x > window.innerWidth * 0.5) goTo(current + 1);
+    else goTo(current - 1);
   });
 
   // Touch swipe
@@ -1187,9 +1048,7 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
   document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
   document.addEventListener('touchend', (e) => {
     const diff = touchStartX - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 50) {
-      diff > 0 ? goTo(current + 1) : goTo(current - 1);
-    }
+    if (Math.abs(diff) > 50) { diff > 0 ? goTo(current + 1) : goTo(current - 1); }
   });
 
   // Wheel
@@ -1198,15 +1057,11 @@ h1, h2, h3 { font-family: 'Clash Display', 'General Sans', sans-serif; }
     e.preventDefault();
     clearTimeout(wheelTimeout);
     wheelTimeout = setTimeout(() => {
-      if (e.deltaY > 30) goTo(current + 1);
-      else if (e.deltaY < -30) goTo(current - 1);
+      if (e.deltaY > 0) goTo(current + 1);
+      else goTo(current - 1);
     }, 80);
   }, { passive: false });
-
-  // Init
-  progress.style.width = (1 / total * 100) + '%';
 })();
 </script>
-
 </body>
 </html>
